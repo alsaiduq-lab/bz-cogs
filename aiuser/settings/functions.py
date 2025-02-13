@@ -80,11 +80,11 @@ class FunctionCallingSettings(MixinMeta):
         )
         await ctx.send(embed=embed)
 
-    @commands.group(name="search")
+    @functions.group(name="search")
     async def search_group(self, ctx: commands.Context):
         """Search function commands"""
         if ctx.invoked_subcommand is None:
-            enabled_tools = await self.config.guild(ctx.guild).enabled_functions()
+            enabled_tools = await self.config.guild(ctx.guild).function_calling_functions()
             from aiuser.functions.search.brave_call import BraveSearchToolCall, BraveSuggestToolCall
             from aiuser.functions.search.serper_call import SearchToolCall
             brave_key = (await self.bot.get_shared_api_tokens("brave_search")).get("api_key")
@@ -96,7 +96,7 @@ class FunctionCallingSettings(MixinMeta):
             message += f"Brave Search: {brave_status} {'(No API key)' if not brave_key else ''}\n"
             message += f"Brave Suggest: {brave_suggest_status} {'(No API key)' if not brave_key else ''}\n"
             message += f"Serper: {serper_status} {'(No API key)' if not serper_key else ''}\n\n"
-            message += f"Use `{ctx.clean_prefix}search brave` or `{ctx.clean_prefix}search serper` to toggle providers."
+            message += f"Use `{ctx.clean_prefix}aiuser functions search brave` or `{ctx.clean_prefix}aiuser functions search serper` to toggle providers."
             await ctx.send(message)
 
     @search_group.command(name="brave")
