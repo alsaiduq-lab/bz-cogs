@@ -80,17 +80,47 @@ class FunctionCallingSettings(MixinMeta):
         )
         await ctx.send(embed=embed)
 
-    @functions.command(name="search")
-    async def toggle_search_function(self, ctx: commands.Context):
-        """ Enable/disable searching/scraping the Internet using Serper.dev """
-        if (not (await self.bot.get_shared_api_tokens("serper")).get("api_key")):
-            return await ctx.send(f"Serper.dev key not set! Set it using `{ctx.clean_prefix}set api serper api_key,APIKEY`.")
+    @commands.group(name="search")
+    async def search_group(self, ctx: commands.Context):
+        """Search function commands"""
+        if ctx.invoked_subcommand is None:
+            enabled_tools = await self.config.guild(ctx.guild).enabled_functions()
+            from aiuser.functions.search.brave_call import BraveSearchToolCall, BraveSuggestToolCall
+            from aiuser.functions.search.serper_call import SearchToolCall
+            brave_key = (await self.bot.get_shared_api_tokens("brave_search")).get("api_key")
+            serper_key = (await self.bot.get_shared_api_tokens("serper")).get("api_key")
+            brave_status = "✅" if BraveSearchToolCall.function_name in enabled_tools else "❌"
+            serper_status = "✅" if SearchToolCall.function_name in enabled_tools else "❌"
+            brave_suggest_status = "✅" if BraveSuggestToolCall.function_name in enabled_tools else "❌"
+            message = "Search Provider Status:\n"
+            message += f"Brave Search: {brave_status} {'(No API key)' if not brave_key else ''}\n"
+            message += f"Brave Suggest: {brave_suggest_status} {'(No API key)' if not brave_key else ''}\n"
+            message += f"Serper: {serper_status} {'(No API key)' if not serper_key else ''}\n\n"
+            message += f"Use `{ctx.clean_prefix}search brave` or `{ctx.clean_prefix}search serper` to toggle providers."
+            await ctx.send(message)
 
-        from aiuser.functions.search.tool_call import SearchToolCall
+    @search_group.command(name="brave")
+    async def toggle_brave_search(self, ctx: commands.Context):
+        """Enable/disable searching using Brave Search"""
+        if not (await self.bot.get_shared_api_tokens("brave_search")).get("api_key"):
+            return await ctx.send(
+                f"Brave Search API key not set! Set it using `{ctx.clean_prefix}set api brave_search api_key,APIKEY`."
+            )
+        from aiuser.functions.search.brave_call import BraveSearchToolCall, BraveSuggestToolCall
+        tool_names = [BraveSearchToolCall.function_name, BraveSuggestToolCall.function_name]
+        await self.toggle_function_helper(ctx, tool_names, "Brave Search")
 
+    @search_group.command(name="serper")
+    async def toggle_serper_search(self, ctx: commands.Context):
+        """Enable/disable searching using Serper.dev"""
+        if not (await self.bot.get_shared_api_tokens("serper")).get("api_key"):
+            return await ctx.send(
+                f"Serper.dev key not set! Set it using `{ctx.clean_prefix}set api serper api_key,APIKEY`."
+            )
+        from aiuser.functions.search.serper_call import SearchToolCall
         tool_names = [SearchToolCall.function_name]
+        await self.toggle_function_helper(ctx, tool_names, "Serper")
 
-        await self.toggle_function_helper(ctx, tool_names, "Search")
 
     @functions.command(name="scrape")
     async def toggle_scrape_function(self, ctx: commands.Context):
