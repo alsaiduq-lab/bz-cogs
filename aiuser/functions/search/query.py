@@ -10,8 +10,18 @@ logger = logging.getLogger("red.bz_cogs.aiuser")
 OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions"
 SERPER_ENDPOINT = "https://google.serper.dev/search"
 
-async def search_google(query: str, api_key: str, ctx: commands.Context):
-    return await SearchQuery(query, api_key, ctx).execute_search()
+
+async def search_google(query: str, api_key: str, ctx: commands.Context, tool_call_id: str = None):
+    """
+    Perform a search using gpt-4o-search-preview if accessible, else fall back to Serper.
+    Returns a tool-compatible response if tool_call_id is provided.
+    """
+    result = await SearchQuery(query, api_key, ctx).execute_search()
+    if tool_call_id:
+        output = result or "No relevant information was found or an error occurred during the search."
+        return {"tool_call_id": tool_call_id, "output": output}
+    return result or "No relevant information was found or an error occurred during the search."
+
 
 class SearchQuery:
     def __init__(self, query: str, api_key: str, ctx: commands.Context):
@@ -26,25 +36,19 @@ class SearchQuery:
         return await self.execute_serper_search()
 
     async def gpt_4o_search(self):
-        payload = json.dumps({
-            "model": "gpt-4o-search-preview",
-            "web_search_options": {
-                "search_context_size": "medium"
-            },
-            "messages": [{
-                "role": "user",
-                "content": self.query
-            }]
-        })
-        headers = {
-            'Authorization': f'Bearer {self.api_key}',
-            'Content-Type': 'application/json'
-        }
+        payload = json.dumps(
+            {
+                "model": "gpt-4o-search-preview",
+                "web_search_options": {"search_context_size": "medium"},
+                "messages": [{"role": "user", "content": self.query}],
+            }
+        )
+        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 
         try:
             async with aiohttp.ClientSession(headers=headers) as session:
                 async with session.post(OPENAI_ENDPOINT, data=payload) as response:
-                    if response.status == 401 or response.status == 403:
+                    if response.status in (401, 403):
                         logger.debug("No access to gpt-4o-search-preview, falling back to Serper")
                         return None
                     response.raise_for_status()
@@ -84,7 +88,7 @@ class SearchQuery:
 
     async def execute_serper_search(self):
         payload = json.dumps({"q": self.query})
-        headers = {'X-API-KEY': self.api_key, 'Content-Type': 'application/json'}
+        headers = {"X-API-KEY": self.api_key, "Content-Type": "application/json"}
 
         try:
             async with aiohttp.ClientSession(headers=headers) as session:
@@ -95,17 +99,18 @@ class SearchQuery:
 
         except Exception:
             logger.exception("Failed request to serper.io")
-            return "An error occurred while searching Google."
+            return None
 
     async def process_serper_results(self, data: dict):
         answer_box = data.get("answerBox")
         if answer_box and "snippet" in answer_box:
             return f"Use the following relevant information to generate your response: {answer_box['snippet']}"
 
-        organic_results = [result for result in data.get(
-            "organic", []) if not contains_youtube_link(result.get("link", ""))]
+        organic_results = [
+            result for result in data.get("organic", []) if not contains_youtube_link(result.get("link", ""))
+        ]
         if not organic_results:
-            return "No relevant information was found using a Google search."
+            return None
 
         first_result = organic_results[0]
         link = first_result.get("link")
@@ -123,10 +128,10 @@ class SearchQuery:
         headers = {
             "Cache-Control": "no-cache",
             "Referer": "https://www.google.com/",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
         }
 
-        logger.info(f"Requesting {link} from query \"{self.query}\" in {self.guild}")
+        logger.info(f'Requesting {link} from query "{self.query}" in {self.guild}')
         async with aiohttp.ClientSession(headers=headers) as session:
             async with session.get(link) as response:
                 response.raise_for_status()
