@@ -1,28 +1,88 @@
 import json
 import logging
-
 import aiohttp
 from redbot.core import commands
 from trafilatura import extract
-
 from aiuser.common.utilities import contains_youtube_link
 
 logger = logging.getLogger("red.bz_cogs.aiuser")
 
+OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions"
 SERPER_ENDPOINT = "https://google.serper.dev/search"
 
-
 async def search_google(query: str, api_key: str, ctx: commands.Context):
-    return await SerperQuery(query, api_key, ctx).execute_search()
+    return await SearchQuery(query, api_key, ctx).execute_search()
 
-
-class SerperQuery:
+class SearchQuery:
     def __init__(self, query: str, api_key: str, ctx: commands.Context):
         self.api_key = api_key
         self.query = query
         self.guild = ctx.guild.name
 
     async def execute_search(self):
+        result = await self.gpt_4o_search()
+        if result is not None:
+            return result
+        return await self.execute_serper_search()
+
+    async def gpt_4o_search(self):
+        payload = json.dumps({
+            "model": "gpt-4o-search-preview",
+            "web_search_options": {
+                "search_context_size": "medium"
+            },
+            "messages": [{
+                "role": "user",
+                "content": self.query
+            }]
+        })
+        headers = {
+            'Authorization': f'Bearer {self.api_key}',
+            'Content-Type': 'application/json'
+        }
+
+        try:
+            async with aiohttp.ClientSession(headers=headers) as session:
+                async with session.post(OPENAI_ENDPOINT, data=payload) as response:
+                    if response.status == 401 or response.status == 403:
+                        logger.debug("No access to gpt-4o-search-preview, falling back to Serper")
+                        return None
+                    response.raise_for_status()
+                    data = await response.json()
+                    return await self.process_gpt_4o_results(data)
+
+        except Exception as e:
+            logger.debug(f"Failed gpt-4o-search-preview request: {str(e)}", exc_info=True)
+            return None
+
+    async def process_gpt_4o_results(self, data: dict):
+        choice = data.get("choices", [{}])[0]
+        message = choice.get("message", {})
+        content = message.get("content", "")
+        annotations = message.get("annotations", [])
+
+        if content:
+            return f"Use the following relevant information to generate your response: {content}"
+
+        valid_urls = [
+            ann["url_citation"]["url"]
+            for ann in annotations
+            if ann.get("type") == "url_citation" and not contains_youtube_link(ann["url_citation"]["url"])
+        ]
+
+        if not valid_urls:
+            return "No relevant information was found using gpt-4o-search."
+
+        link = valid_urls[0]
+        try:
+            text_content = await self.scrape_page(link)
+            return f"Use the following relevant information to generate your response: {text_content}"
+
+        except Exception:
+            logger.debug(f"Failed scraping URL {link}", exc_info=True)
+            return f"Use the following relevant information to generate your response: {content or 'No additional details available.'}"
+
+    async def execute_serper_search(self):
         payload = json.dumps({"q": self.query})
         headers = {'X-API-KEY': self.api_key, 'Content-Type': 'application/json'}
 
@@ -30,15 +90,14 @@ class SerperQuery:
             async with aiohttp.ClientSession(headers=headers) as session:
                 async with session.post(SERPER_ENDPOINT, data=payload) as response:
                     response.raise_for_status()
-
                     data = await response.json()
-                    return await self.process_search_results(data)
+                    return await self.process_serper_results(data)
 
         except Exception:
             logger.exception("Failed request to serper.io")
-            return "An error occured while searching Google."
+            return "An error occurred while searching Google."
 
-    async def process_search_results(self, data: dict):
+    async def process_serper_results(self, data: dict):
         answer_box = data.get("answerBox")
         if answer_box and "snippet" in answer_box:
             return f"Use the following relevant information to generate your response: {answer_box['snippet']}"
@@ -67,7 +126,7 @@ class SerperQuery:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
         }
 
-        logger.info(f"Requesting {link} from Google query \"{self.query}\" in {self.guild}")
+        logger.info(f"Requesting {link} from query \"{self.query}\" in {self.guild}")
         async with aiohttp.ClientSession(headers=headers) as session:
             async with session.get(link) as response:
                 response.raise_for_status()
