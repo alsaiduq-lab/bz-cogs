@@ -22,10 +22,15 @@ async def handle_slash_command(cog: MixinMeta, inter: discord.Interaction, text:
     """Handle /chat slash command interactions"""
     await inter.response.defer()
 
+
     ctx = await commands.Context.from_interaction(inter)
     ctx.message.content = text
 
-    if not (await is_valid_message(cog, ctx)):
+    # Allow if DMChannel (either a bot DM or user app "start conversation")
+    if isinstance(ctx.channel, discord.DMChannel):
+        pass  # allow in DMs
+    # Otherwise, require usual validation for server context
+    elif not (await is_valid_message(cog, ctx)):
         return await ctx.send(
             "You're not allowed to use this command here.", ephemeral=True
         )
@@ -44,12 +49,29 @@ async def handle_slash_command(cog: MixinMeta, inter: discord.Interaction, text:
 
     try:
         await create_response(cog, ctx)
-    except Exception:
-        await ctx.send(":warning: Error in generating response!", ephemeral=True)
+    except Exception as e:
+        # In DMs, you can't use ephemeral; fallback to plain send.
+        import traceback
+        tb = traceback.format_exc()
+        msg = f":warning: Error in generating response!\n```py\n{str(e)}\n```"
+        if ctx.guild is None:
+            await ctx.send(msg)
+            await ctx.send(f"Traceback:\n```{tb[-1500:]}```")
+        else:
+            await ctx.send(":warning: Error in generating response!", ephemeral=True)
 
 
 async def handle_message(cog: MixinMeta, message: discord.Message):
     """Handle regular message events"""
+
+    # Do not reply to bot's own messages (prevents DM/user app loops)
+    if message.author.id == cog.bot.user.id:
+        return
+
+    # Ignore regular messages in DMs (only respond to slash/app commands there)
+    if message.guild is None:
+        return
+
     ctx: commands.Context = await cog.bot.get_context(message)
 
     if not (await is_valid_message(cog, ctx)):
@@ -81,29 +103,39 @@ async def handle_message(cog: MixinMeta, message: discord.Message):
 
 
 async def get_percentage(cog: MixinMeta, ctx: commands.Context) -> float:
-    """Get reply percentage based on member/role/channel/guild settings"""
+    """Get reply percentage based on member/role/channel/guild settings
+    In DMs (user app), always reply (1.0).
+    """
+    if ctx.guild is None:
+        return 1.0
+
     role_percent = None
     author = ctx.author
-
-    for role in author.roles:
-        if role.id in (await cog.config.all_roles()):
-            role_percent = await cog.config.role(role).reply_percent()
-            break
+    # Only check roles if author is a Member (guild context)
+    if hasattr(author, "roles"):
+        for role in author.roles:
+            if role.id in (await cog.config.all_roles()):
+                role_percent = await cog.config.role(role).reply_percent()
+                break
 
     percentage = await cog.config.member(author).reply_percent()
-    if percentage == None:
+    if percentage is None:
         percentage = role_percent
-    if percentage == None:
+    if percentage is None:
         percentage = await cog.config.channel(ctx.channel).reply_percent()
-    if percentage == None:
+    if percentage is None:
         percentage = await cog.config.guild(ctx.guild).reply_percent()
-    if percentage == None:
+    if percentage is None:
         percentage = DEFAULT_REPLY_PERCENT
     return percentage
 
 
 async def is_in_conversation(cog: MixinMeta, ctx: commands.Context) -> bool:
     """Check if bot should continue conversation based on recent messages"""
+    # DMs or no guild, do not allow conversation logic
+    if ctx.guild is None:
+        return False
+
     reply_percent = await cog.config.guild(ctx.guild).conversation_reply_percent()
     reply_time_seconds = await cog.config.guild(ctx.guild).conversation_reply_time()
 
