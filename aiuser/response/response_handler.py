@@ -1,4 +1,3 @@
-# response/response_handler.py
 import logging
 
 from redbot.core import commands
@@ -26,7 +25,10 @@ async def process_chat_response(cog: MixinMeta, ctx: commands.Context, messages_
     """Process and send a chat response"""
     messages_list = messages_list or await create_messages_list(cog, ctx)
 
-    async with ctx.message.channel.typing():
+    try:
+        async with ctx.message.channel.typing():
+            return await create_chat_response(cog, ctx, messages_list)
+    except Exception:
         return await create_chat_response(cog, ctx, messages_list)
 
 
