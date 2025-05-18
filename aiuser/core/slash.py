@@ -1,12 +1,18 @@
-try:
-    from discord.app_commands import installs as app_installs
-except ImportError:
-    app_installs = None
-
-
 import discord
 from redbot.core import app_commands
 from aiuser.core.handlers import handle_slash_command
+from aiuser.config.defaults import DEFAULT_PROMPT
+
+
+async def get_prompt(cog, ctx):
+    if ctx.guild:
+        return (
+            await cog.config.guild(ctx.guild).custom_text_prompt()
+            or await cog.config.custom_text_prompt()
+            or DEFAULT_PROMPT
+        )
+    else:
+        return await cog.config.custom_text_prompt() or DEFAULT_PROMPT
 
 
 @app_commands.command(name="chat", description="Talk directly to this bot's AI. Ask it anything you want!")
@@ -14,43 +20,45 @@ from aiuser.core.handlers import handle_slash_command
 @app_commands.checks.cooldown(1, 30)
 @app_commands.checks.cooldown(1, 5, key=None)
 async def chat_slash_command(inter: discord.Interaction, text: str):
+    cog = inter.client.get_cog("AIUser")
+    if not cog:
+        await inter.response.send_message("Cog not loaded!", ephemeral=True)
+        return
     if not (1 <= len(text) <= 2000):
         await inter.response.send_message("Text must be between 1 and 2000 characters.", ephemeral=True)
         return
+    await handle_slash_command(cog, inter, text)
+
+
+@app_commands.command(name="dm_prompt", description="Get or set the AI persona prompt for DMs/user apps (admins only).")
+@app_commands.describe(prompt="Optionally set a new global DM prompt (leave blank to show current)")
+@app_commands.checks.has_permissions(administrator=True)
+async def dm_prompt_slash_command(inter: discord.Interaction, prompt: str = None):
     cog = inter.client.get_cog("AIUser")
     if not cog:
         await inter.response.send_message("Cog not loaded!", ephemeral=True)
         return
-    await handle_slash_command(cog, inter, text)
-
-
-@app_commands.context_menu(name="Chat with AI")
-@app_commands.checks.cooldown(1, 30)
-@app_commands.checks.cooldown(1, 5, key=None)
-async def chat_user_app(inter: discord.Interaction, message: discord.Message):
-    cog = inter.client.get_cog("AIUser")
-    if not cog:
-        await inter.response.send_message("Cog not loaded!", ephemeral=True)
+    if not prompt:
+        val = await cog.config.custom_text_prompt()
+        if not val:
+            val = DEFAULT_PROMPT
+        await inter.response.send_message(f"Current DM/global prompt:\n```{val}```", ephemeral=True)
         return
-    text = message.content or ""
-    if not (1 <= len(text) <= 2000):
-        await inter.response.send_message("Message must be between 1 and 2000 characters.", ephemeral=True)
-        return
-    await handle_slash_command(cog, inter, text)
+    await cog.config.custom_text_prompt.set(prompt)
+    await inter.response.send_message(f"Set global DM prompt to:\n```{prompt}```", ephemeral=True)
 
 
 async def app_install(bot, cog):
-    (cog.bot if hasattr(cog, "bot") else bot).tree.add_command(chat_slash_command)
-    (cog.bot if hasattr(cog, "bot") else bot).tree.add_command(chat_user_app)
+    tree = cog.bot if hasattr(cog, "bot") else bot
+    tree.tree.add_command(chat_slash_command)
+    tree.tree.add_command(dm_prompt_slash_command)
 
-    if app_installs is not None:
-        try:
-            for cmd in [chat_slash_command, chat_user_app]:
-                cmd.allowed_contexts = app_installs.AppCommandContext(guild=True, dm_channel=True, private_channel=True)
-                cmd.allowed_installs = app_installs.AppInstallationType(guild=True, user=True)
-        except Exception as exc:
-            import logging
 
-            logging.getLogger("red.aiuser").exception(
-                "Failed to set allowed_contexts/installs for aiuser commands", exc_info=exc
-            )
+try:
+    from discord.app_commands import installs as app_installs
+
+    for cmd in [chat_slash_command, dm_prompt_slash_command]:
+        cmd.allowed_contexts = app_installs.AppCommandContext(guild=True, dm_channel=True, private_channel=True)
+        cmd.allowed_installs = app_installs.AppInstallationType(guild=True, user=True)
+except Exception:
+    pass
