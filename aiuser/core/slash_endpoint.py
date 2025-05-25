@@ -4,6 +4,7 @@ from aiuser.core.openai_utils import setup_openai_client
 from .slash_utils import owner_check
 from typing import Optional
 import logging
+import httpx
 
 logger = logging.getLogger("red.bz_cogs.aiuser")
 
@@ -30,12 +31,24 @@ async def aiuser_endpoint(inter: discord.Interaction, url: Optional[str]):
         await inter.response.defer(ephemeral=True, thinking=True)
 
     orig_input_url = url
+    endpoint_type = "openai"
+
     if url == "openrouter":
         url = "https://openrouter.ai/api/v1/"
+        endpoint_type = "openrouter"
     elif url == "ollama":
         url = "http://localhost:11434/v1/"
+        endpoint_type = "ollama"
     elif url in ("openai", None, "", "clear", "reset"):
         url = "https://api.openai.com/v1/"
+        endpoint_type = "openai"
+    else:
+        if "openrouter" in (url or ""):
+            endpoint_type = "openrouter"
+        elif "ollama" in (url or ""):
+            endpoint_type = "ollama"
+        else:
+            endpoint_type = "openai"
 
     prev_url = await cog.config.custom_openai_endpoint()
     await cog.config.custom_openai_endpoint.set(url)
@@ -54,7 +67,17 @@ async def aiuser_endpoint(inter: discord.Interaction, url: Optional[str]):
         return
 
     try:
-        await cog.openai_client.models.list()
+        if endpoint_type == "ollama":
+            async with httpx.AsyncClient() as client:
+                r = await client.get(url + "models")
+                if r.status_code != 200:
+                    raise RuntimeError(f"Ollama error: {r.text}")
+        else:
+            try:
+                await cog.openai_client.models.list()
+            except Exception as e:
+                raise RuntimeError(f"Failed to list models: {e}")
+
     except Exception as e_test:
         logger.error(f"Failed to test endpoint '{url}': {e_test}", exc_info=True)
         await cog.config.custom_openai_endpoint.set(prev_url)
