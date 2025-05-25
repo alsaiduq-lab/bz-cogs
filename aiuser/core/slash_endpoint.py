@@ -15,6 +15,9 @@ logger = logging.getLogger("red.bz_cogs.aiuser")
 @app_commands.describe(url="Custom OpenAI API compatible endpoint URL, or 'openai', 'openrouter', 'ollama'.")
 @owner_check()
 async def aiuser_endpoint(inter: discord.Interaction, url: Optional[str]):
+    """
+    Sets the API endpoint for OpenAI, OpenRouter, or Ollama.
+    """
     cog = inter.client.get_cog("AIUser")
     if not cog:
         await inter.response.send_message("AIUser Cog not loaded!", ephemeral=True)
@@ -35,11 +38,10 @@ async def aiuser_endpoint(inter: discord.Interaction, url: Optional[str]):
         url = "https://openrouter.ai/api/v1/"
     elif url == "ollama":
         url = "http://localhost:11434/v1/"
-    else:
+    elif url == "openai" or not url:
         url = "https://api.openai.com/v1/"
 
     previous_config_url = await cog.config.custom_openai_endpoint()
-
     await cog.config.custom_openai_endpoint.set(url)
 
     try:
@@ -55,16 +57,22 @@ async def aiuser_endpoint(inter: discord.Interaction, url: Optional[str]):
         )
         return
 
-    try:
-        await cog.openai_client.models.list()
-    except Exception as e_test:
-        logger.error(f"Failed to test endpoint '{url}': {e_test}", exc_info=True)
-        await cog.config.custom_openai_endpoint.set(previous_config_url)
-        await inter.followup.send(
-            f":warning: New endpoint `{original_input_url or 'default'}` failed test. Endpoint reverted. Error: {e_test}",
-            ephemeral=True,
-        )
-        return
+    if (
+        url.startswith("https://api.openai.com")
+        or url.startswith("https://openrouter.ai")
+        or "openrouter" in (original_input_url or "")
+        or "openai" in (original_input_url or "")
+    ):
+        try:
+            await cog.openai_client.models.list()
+        except Exception as e_test:
+            logger.error(f"Failed to test endpoint '{url}': {e_test}", exc_info=True)
+            await cog.config.custom_openai_endpoint.set(previous_config_url)
+            await inter.followup.send(
+                f":warning: New endpoint `{original_input_url or 'default'}` failed test. Endpoint reverted. Error: {e_test}",
+                ephemeral=True,
+            )
+            return
 
     success_message = f"✅ Endpoint set to `{url or 'Official OpenAI'}` and tested successfully."
     if url != previous_config_url:
