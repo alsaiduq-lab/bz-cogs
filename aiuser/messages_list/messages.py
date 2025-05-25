@@ -69,7 +69,7 @@ class MessagesList:
                 self.model
             )
         else:
-            self.model = await self.config.default_model() or "gpt-4o"
+            self.model = await self.config.default_model()
             self.token_limit = self._get_token_limit(self.model)
         try:
             self._encoding = tiktoken.encoding_for_model(self.model)
