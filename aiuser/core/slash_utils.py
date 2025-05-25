@@ -7,7 +7,8 @@ def owner_check():
         cog = inter.client.get_cog("AIUser")
         if inter.guild:
             return inter.user.guild_permissions.administrator
-        owners = await inter.client.application_info().owner
+        appinfo = await inter.client.application_info()
+        owners = appinfo.owner
         owner_ids = {owners.id} if hasattr(owners, "id") else {m.id for m in owners.members}
         accepted_ids = set(await cog.config.accepted_ids() or [])
         return (inter.user.id in owner_ids) or (inter.user.id in accepted_ids)
@@ -16,7 +17,8 @@ def owner_check():
 
 
 async def get_owner_ids(inter):
-    owners = await inter.client.application_info().owner
+    appinfo = await inter.client.application_info()
+    owners = appinfo.owner
     if hasattr(owners, "id"):
         return {owners.id}
     return {m.id for m in owners.members}
