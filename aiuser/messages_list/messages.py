@@ -69,8 +69,13 @@ class MessagesList:
                 self.model
             )
         else:
-            self.model = await self.config.default_model()
+            self.model = (
+                await self.config.user(self.ctx.author).dm_model() or await self.config.default_model() or "gpt-4o"
+            )
+            if not self.model or not isinstance(self.model, str):
+                raise RuntimeError()
             self.token_limit = self._get_token_limit(self.model)
+
         try:
             self._encoding = tiktoken.encoding_for_model(self.model)
         except Exception:
@@ -83,9 +88,11 @@ class MessagesList:
             var_prompt = await format_variables(self.ctx, bot_prompt)
             await self.add_system(var_prompt)
         else:
-            from aiuser.config.defaults import DEFAULT_PROMPT
-
-            prompt = prompt or await self.config.custom_text_prompt()
+            prompt = (
+                prompt
+                or await self.config.user(self.ctx.author).custom_text_prompt()
+                or await self.config.custom_text_prompt()
+            )
             bot_prompt = prompt or DEFAULT_PROMPT
             var_prompt = await format_variables(self.ctx, bot_prompt)
             await self.add_system(var_prompt)
