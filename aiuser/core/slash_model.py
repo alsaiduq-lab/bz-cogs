@@ -10,10 +10,10 @@ from aiuser.settings.utilities import get_available_models
 )
 async def aiuser_model(inter: discord.Interaction):
     await inter.response.send_message(
-        "Subcommands:\n"
-        "/aiuser_model set - Set DM model\n"
-        "/aiuser_model get - Show DM model\n"
-        "/aiuser_model list - List available models",
+        "**Subcommands:**\n"
+        "`/aiuser_model set <model>` — Set the model for this server or DMs\n"
+        "`/aiuser_model get` — Show the current model\n"
+        "`/aiuser_model list` — List available models from this endpoint",
         ephemeral=True,
     )
 
@@ -21,25 +21,33 @@ async def aiuser_model(inter: discord.Interaction):
 aiuser_model_group = Group(name="aiuser_model", description="Manage or list AI models.")
 
 
-@aiuser_model_group.command(name="set", description="Set the AI model for user apps.")
-@app_commands.describe(model="The model to set for DMs/user apps.")
+@aiuser_model_group.command(name="set", description="Set the AI model for this server or DMs.")
+@app_commands.describe(model="The model to set.")
 async def set_model(inter: discord.Interaction, model: str):
     cog = inter.client.get_cog("AIUser")
     if not cog:
         await inter.response.send_message("Cog not loaded!", ephemeral=True)
         return
-    await cog.config.dm_model.set(model)
-    await inter.response.send_message(f"Set DM model to: {model}", ephemeral=True)
+    if inter.guild:
+        await cog.config.guild(inter.guild).model.set(model)
+        await inter.response.send_message(f"Set server model to: `{model}`", ephemeral=True)
+    else:
+        await cog.config.dm_model.set(model)
+        await inter.response.send_message(f"Set DM model to: `{model}`", ephemeral=True)
 
 
-@aiuser_model_group.command(name="get", description="Get the current AI model for user apps.")
+@aiuser_model_group.command(name="get", description="Get the current AI model for this server or DMs.")
 async def get_model(inter: discord.Interaction):
     cog = inter.client.get_cog("AIUser")
     if not cog:
         await inter.response.send_message("Cog not loaded!", ephemeral=True)
         return
-    val = await cog.config.dm_model()
-    await inter.response.send_message(f"Current DM model: {val or 'default'}", ephemeral=True)
+    if inter.guild:
+        val = await cog.config.guild(inter.guild).model()
+        await inter.response.send_message(f"Current server model: `{val or 'default'}`", ephemeral=True)
+    else:
+        val = await cog.config.dm_model()
+        await inter.response.send_message(f"Current DM model: `{val or 'default'}`", ephemeral=True)
 
 
 @aiuser_model_group.command(name="list", description="List available models from the current endpoint.")
