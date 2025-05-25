@@ -34,6 +34,25 @@ async def chat_slash_command(inter: discord.Interaction, text: str):
 
 
 @app_commands.command(
+    name="lobotomize",
+    description="Reset the prompt to default. (Server or DM)",
+)
+@owner_check()
+async def lobotomize_command(inter: discord.Interaction):
+    cog = inter.client.get_cog("AIUser")
+    if not cog:
+        await inter.response.send_message("Cog not loaded!", ephemeral=True)
+        return
+
+    if inter.guild:
+        await cog.config.guild(inter.guild).custom_text_prompt.set(None)
+        await inter.response.send_message("Server prompt has been reset to default.", ephemeral=True)
+    else:
+        await cog.config.dm_prompt.set(None)
+        await inter.response.send_message("DM prompt has been reset to default.", ephemeral=True)
+
+
+@app_commands.command(
     name="aiuser_accepted",
     description="Manage the accepted admin IDs.",
 )
@@ -100,6 +119,7 @@ async def aiuser_accepted_slash_command(
 async def app_install(bot, cog):
     tree = cog.bot if hasattr(cog, "bot") else bot
     tree.tree.add_command(chat_slash_command)
+    tree.tree.add_command(lobotomize_command)
     tree.tree.add_command(aiuser_prompt_group)
     tree.tree.add_command(aiuser_model_group)
     tree.tree.add_command(aiuser_accepted_slash_command)
@@ -113,6 +133,11 @@ async def app_install(bot, cog):
             guild=True, dm_channel=True, private_channel=True
         )
         chat_slash_command.allowed_installs = installs.AppInstallationType(guild=True, user=True)
+
+        lobotomize_command.allowed_contexts = installs.AppCommandContext(
+            guild=True, dm_channel=True, private_channel=True
+        )
+        lobotomize_command.allowed_installs = installs.AppInstallationType(guild=True, user=True)
 
         for cmd in [
             aiuser_accepted_slash_command,

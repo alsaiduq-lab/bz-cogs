@@ -3,7 +3,6 @@ import discord
 from redbot.core import app_commands
 from aiuser.config.models import VISION_SUPPORTED_MODELS
 from aiuser.types.enums import ScanImageMode
-
 from discord.app_commands import Group
 
 aiuser_image_group = Group(
@@ -127,12 +126,10 @@ async def image_model(inter: discord.Interaction, model_name: str):
         return
 
     config_section = get_config_section(cog, inter)
-    warning_message = None
-
     await config_section.scan_images_model.set(model_name)
     embed = discord.Embed(
-        title="LLM for image scan now set to:", description=f"`{model_name}`", color=discord.Color.green()
+        title="LLM for image scan now set to:",
+        description=f"`{model_name}`",
+        color=discord.Color.green(),
     )
-    if warning_message:
-        embed.set_footer(text=warning_message)
     await inter.response.send_message(embed=embed, ephemeral=True)

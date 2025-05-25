@@ -2,6 +2,25 @@ import discord
 from redbot.core import app_commands
 from discord.app_commands import Group
 
+
+@app_commands.command(
+    name="aiuser_functions",
+    description="Manage function calling.",
+)
+async def aiuser_functions(inter: discord.Interaction):
+    await inter.response.send_message(
+        "See the subcommands:\n"
+        "/aiuser_functions toggle\n"
+        "/aiuser_functions location\n"
+        "/aiuser_functions search\n"
+        "/aiuser_functions scrape\n"
+        "/aiuser_functions weather\n"
+        "/aiuser_functions noresponse\n"
+        "/aiuser_functions wolframalpha",
+        ephemeral=True,
+    )
+
+
 aiuser_functions_group = Group(name="aiuser_functions", description="Manage function calling.")
 
 
