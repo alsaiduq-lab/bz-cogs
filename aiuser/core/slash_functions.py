@@ -1,7 +1,6 @@
 import discord
 from redbot.core import app_commands
 from discord.app_commands import Group
-from
 
 aiuser_functions_group = Group(name="aiuser_functions", description="Manage function calling.")
 
