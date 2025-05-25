@@ -1,11 +1,24 @@
 import discord
-from typing import Optional
+from redbot.core import app_commands
 from discord.app_commands import Group, describe
 from aiuser.core.openai_utils import setup_openai_client
 from .slash_utils import owner_check
+from typing import Optional
 import logging
 
 logger = logging.getLogger("red.bz_cogs.aiuser")
+
+
+@app_commands.command(
+    name="aiuser_endpoint",
+    description="Manage AIUser endpoint settings.",
+)
+async def aiuser_endpoint(inter: discord.Interaction):
+    await inter.response.send_message(
+        "See the subcommands:\n/aiuser_endpoint endpoint - Set or update the OpenAI API endpoint.",
+        ephemeral=True,
+    )
+
 
 aiuser_endpoint_group = Group(
     name="aiuser_endpoint",
