@@ -21,7 +21,7 @@ async def aiuser_model(inter: discord.Interaction):
 aiuser_model_group = Group(name="aiuser_model", description="Manage or list AI models.")
 
 
-@aiuser_model_group.command(name="set", description="Set the AI model for this server or DMs.")
+@aiuser_model_group.command(name="set", description="Set the AI model for this server or your DMs.")
 @app_commands.describe(model="The model to set.")
 async def set_model(inter: discord.Interaction, model: str):
     cog = inter.client.get_cog("AIUser")
@@ -32,11 +32,11 @@ async def set_model(inter: discord.Interaction, model: str):
         await cog.config.guild(inter.guild).model.set(model)
         await inter.response.send_message(f"Set server model to: `{model}`", ephemeral=True)
     else:
-        await cog.config.dm_model.set(model)
-        await inter.response.send_message(f"Set DM model to: `{model}`", ephemeral=True)
+        await cog.config.user(inter.user).dm_model.set(model)
+        await inter.response.send_message(f"Set your DM model to: `{model}`", ephemeral=True)
 
 
-@aiuser_model_group.command(name="get", description="Get the current AI model for this server or DMs.")
+@aiuser_model_group.command(name="get", description="Get the current AI model for this server or your DMs.")
 async def get_model(inter: discord.Interaction):
     cog = inter.client.get_cog("AIUser")
     if not cog:
@@ -46,8 +46,8 @@ async def get_model(inter: discord.Interaction):
         val = await cog.config.guild(inter.guild).model()
         await inter.response.send_message(f"Current server model: `{val or 'default'}`", ephemeral=True)
     else:
-        val = await cog.config.dm_model()
-        await inter.response.send_message(f"Current DM model: `{val or 'default'}`", ephemeral=True)
+        val = await cog.config.user(inter.user).dm_model()
+        await inter.response.send_message(f"Your current DM model: `{val or 'default'}`", ephemeral=True)
 
 
 @aiuser_model_group.command(name="list", description="List available models from the current endpoint.")
@@ -62,7 +62,7 @@ async def list_models(inter: discord.Interaction):
         return
     desc = "\n".join(f"{m}" for m in models)
     embed = discord.Embed(
-        title="Available AI Models",
+        title="Available models",
         description=desc[:4090] + "..." if len(desc) > 4090 else desc,
         color=discord.Color.blurple(),
     )
