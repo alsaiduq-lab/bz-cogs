@@ -1,6 +1,5 @@
 from redbot.core import app_commands
-
-from aiuser.config.constants import DEFAULT_PROMPT, DEFAULT_DM_PROMPT
+from ..config.defaults import DEFAULT_PROMPT, DEFAULT_DM_PROMPT
 
 
 def owner_check():
