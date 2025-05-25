@@ -2,7 +2,6 @@ import discord
 from redbot.core import app_commands
 
 from ..utils.utilities import get_available_models
-from .slash import owner_check
 
 aiuser_model_group = app_commands.Group(
     name="aiuser_model",
@@ -14,7 +13,6 @@ aiuser_model_group = app_commands.Group(
     description="Set the AI model for user apps.",
 )
 @app_commands.describe(model="The model to set for DMs/user apps.")
-@owner_check()
 async def set_model(inter: discord.Interaction, model: str):
     cog = inter.client.get_cog("AIUser")
     if not cog:
@@ -28,7 +26,6 @@ async def set_model(inter: discord.Interaction, model: str):
     name="get",
     description="Get the current AI model for user apps.",
 )
-@owner_check()
 async def get_model(inter: discord.Interaction):
     cog = inter.client.get_cog("AIUser")
     if not cog:
@@ -42,7 +39,6 @@ async def get_model(inter: discord.Interaction):
     name="list",
     description="List available models from the current endpoint.",
 )
-@owner_check()
 async def list_models(inter: discord.Interaction):
     cog = inter.client.get_cog("AIUser")
     if not cog or not hasattr(cog, "openai_client"):

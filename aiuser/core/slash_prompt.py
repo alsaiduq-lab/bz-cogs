@@ -1,6 +1,5 @@
 import discord
 from redbot.core import app_commands
-from .slash import owner_check
 from aiuser.config.defaults import DEFAULT_PROMPT, DEFAULT_DM_PROMPT
 
 from discord.app_commands import Group
@@ -38,7 +37,6 @@ async def prompt_show(inter: discord.Interaction):
 
 
 @aiuser_prompt_group.command(name="set", description="Set a new prompt.")
-@owner_check()
 @app_commands.describe(prompt="The new prompt text. Leave blank to reset to default.")
 async def prompt_set(inter: discord.Interaction, prompt: str = None):
     cog = inter.client.get_cog("AIUser")
@@ -64,7 +62,6 @@ async def prompt_set(inter: discord.Interaction, prompt: str = None):
 
 
 @aiuser_prompt_group.command(name="lobotomize", description="Reset the prompt to default.")
-@owner_check()
 async def prompt_lobotomize(inter: discord.Interaction):
     cog = inter.client.get_cog("AIUser")
     if not cog:
@@ -80,7 +77,6 @@ async def prompt_lobotomize(inter: discord.Interaction):
 
 
 @app_commands.command(name="lobotomize", description="Reset the prompt to default.")
-@owner_check()
 async def global_lobotomize(inter: discord.Interaction):
     cog = inter.client.get_cog("AIUser")
     if not cog:

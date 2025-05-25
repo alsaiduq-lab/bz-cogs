@@ -1,45 +1,11 @@
 import discord
 from redbot.core import app_commands
 from aiuser.core.handlers import handle_slash_command
-from aiuser.config.defaults import (
-    DEFAULT_PROMPT,
-    DEFAULT_DM_PROMPT,
-)
 from .slash_prompt import aiuser_prompt_group
 from .slash_model import aiuser_model_group
 from .slash_functions import aiuser_functions_group
 from .slash_image import aiuser_image_group
-
-
-def owner_check():
-    async def predicate(inter: discord.Interaction):
-        cog = inter.client.get_cog("AIUser")
-        if inter.guild:
-            return inter.user.guild_permissions.administrator
-        owners = await inter.client.application_info().owner
-        owner_ids = {owners.id} if hasattr(owners, "id") else {m.id for m in owners.members}
-        accepted_ids = set(await cog.config.accepted_ids() or [])
-        return (inter.user.id in owner_ids) or (inter.user.id in accepted_ids)
-
-    return app_commands.check(predicate)
-
-
-async def get_owner_ids(inter):
-    owners = await inter.client.application_info().owner
-    if hasattr(owners, "id"):
-        return {owners.id}
-    return {m.id for m in owners.members}
-
-
-async def get_prompt(cog, ctx):
-    if ctx.guild:
-        return (
-            await cog.config.guild(ctx.guild).custom_text_prompt()
-            or await cog.config.custom_text_prompt()
-            or DEFAULT_PROMPT
-        )
-    else:
-        return await cog.config.dm_prompt() or await cog.config.custom_text_prompt() or DEFAULT_DM_PROMPT
+from .slash_utils import get_owner_ids, owner_check
 
 
 @app_commands.command(

@@ -3,7 +3,6 @@ import discord
 from redbot.core import app_commands
 from aiuser.config.models import VISION_SUPPORTED_MODELS
 from aiuser.types.enums import ScanImageMode
-from .slash import owner_check
 
 from discord.app_commands import Group
 
@@ -21,7 +20,6 @@ def get_config_section(cog, inter):
 
 
 @aiuser_image_group.command(name="toggle", description="Toggle image scanning on/off.")
-@owner_check()
 async def image_toggle(inter: discord.Interaction):
     cog = inter.client.get_cog("AIUser")
     if not cog:
@@ -39,7 +37,6 @@ async def image_toggle(inter: discord.Interaction):
 
 
 @aiuser_image_group.command(name="maxsize", description="Set max image size in MB.")
-@owner_check()
 @app_commands.describe(size="Max download size in Megabytes")
 async def image_maxsize(inter: discord.Interaction, size: float):
     cog = inter.client.get_cog("AIUser")
@@ -57,7 +54,6 @@ async def image_maxsize(inter: discord.Interaction, size: float):
 
 
 @aiuser_image_group.command(name="mode", description="Set method for scanning images.")
-@owner_check()
 @app_commands.describe(mode="Image scan mode: local, ai-horde, llm")
 async def image_mode(inter: discord.Interaction, mode: str):
     cog = inter.client.get_cog("AIUser")
@@ -123,7 +119,6 @@ async def image_mode(inter: discord.Interaction, mode: str):
 
 
 @aiuser_image_group.command(name="model", description="Set the specific LLM model for image scan.")
-@owner_check()
 @app_commands.describe(model_name="Name of a compatible model")
 async def image_model(inter: discord.Interaction, model_name: str):
     cog = inter.client.get_cog("AIUser")
