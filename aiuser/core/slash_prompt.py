@@ -10,12 +10,19 @@ from aiuser.config.defaults import DEFAULT_PROMPT, DEFAULT_DM_PROMPT
 )
 async def aiuser_prompt(inter: discord.Interaction):
     await inter.response.send_message(
-        "Subcommands:\n/aiuser_prompt show - Show current prompt\n/aiuser_prompt set - Set a new prompt\n",
+        "See the subcommands:\n/aiuser_prompt show - Show current prompt\n/aiuser_prompt set - Set a new prompt\n",
         ephemeral=True,
     )
 
 
 aiuser_prompt_group = Group(name="aiuser_prompt", description="Show or set the AI prompt.")
+
+
+def get_config_section(cog, inter):
+    if inter.guild:
+        return cog.config.guild(inter.guild)
+    else:
+        return cog.config.user(inter.user)
 
 
 @aiuser_prompt_group.command(name="show", description="Show the current prompt.")
@@ -24,12 +31,9 @@ async def prompt_show(inter: discord.Interaction):
     if not cog:
         await inter.response.send_message("Cog not loaded!", ephemeral=True)
         return
+    config_section = get_config_section(cog, inter)
     if inter.guild:
-        val = (
-            await cog.config.guild(inter.guild).custom_text_prompt()
-            or await cog.config.custom_text_prompt()
-            or DEFAULT_PROMPT
-        )
+        val = await config_section.custom_text_prompt() or await cog.config.custom_text_prompt() or DEFAULT_PROMPT
         await inter.response.send_message(f"**Server prompt:**\n{val}", ephemeral=True)
     else:
         val = await cog.config.dm_prompt() or await cog.config.custom_text_prompt() or DEFAULT_DM_PROMPT
@@ -43,8 +47,8 @@ async def prompt_set(inter: discord.Interaction, prompt: str = None):
     if not cog:
         await inter.response.send_message("Cog not loaded!", ephemeral=True)
         return
+    config_section = get_config_section(cog, inter)
     if inter.guild:
-        config_section = cog.config.guild(inter.guild)
         if not prompt:
             await config_section.custom_text_prompt.set(None)
             await inter.response.send_message("Prompt reset to default.", ephemeral=True)

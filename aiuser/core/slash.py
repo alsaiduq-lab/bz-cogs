@@ -6,6 +6,7 @@ from .slash_model import aiuser_model_group
 from .slash_functions import aiuser_functions_group
 from .slash_image import aiuser_image_group
 from .slash_utils import get_owner_ids, owner_check
+from .slash_endpoint import aiuser_endpoint_group
 
 
 @app_commands.command(
@@ -125,6 +126,7 @@ async def app_install(bot, cog):
     tree.tree.add_command(aiuser_accepted_slash_command)
     tree.tree.add_command(aiuser_functions_group)
     tree.tree.add_command(aiuser_image_group)
+    tree.tree.add_command(aiuser_endpoint_group)
 
     try:
         from discord.app_commands import installs
@@ -150,6 +152,7 @@ async def app_install(bot, cog):
             aiuser_model_group,
             aiuser_functions_group,
             aiuser_image_group,
+            aiuser_endpoint_group,
         ]:
             for subcmd in group.commands:
                 subcmd.allowed_contexts = installs.AppCommandContext(guild=True, dm_channel=True, private_channel=True)
