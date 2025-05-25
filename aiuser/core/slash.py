@@ -20,7 +20,13 @@ async def chat_slash_command(inter: discord.Interaction, text: str):
     if not cog:
         await inter.response.send_message("Cog not loaded!", ephemeral=True)
         return
-    max_length = 4000 if inter.user.premium_since or getattr(inter.user, "premium_type", 0) else 2000
+
+    member = inter.user
+    is_nitro = False
+    if hasattr(member, "premium_since") or hasattr(member, "premium_type"):
+        is_nitro = bool(getattr(member, "premium_since", None) or getattr(member, "premium_type", 0))
+    max_length = 4000 if is_nitro else 2000
+
     if not (1 <= len(text) <= max_length):
         await inter.response.send_message(f"Text must be between 1 and {max_length} characters.", ephemeral=True)
         return
