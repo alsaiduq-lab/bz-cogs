@@ -54,8 +54,7 @@ async def aiuser_endpoint(inter: discord.Interaction, url: Optional[str]):
         return
 
     try:
-        models_response = await cog.openai_client.models.list()
-        available_models = [m.id for m in getattr(models_response, "data", [])]
+        await cog.openai_client.models.list()
     except Exception as e_test:
         logger.error(f"Failed to test endpoint '{url}': {e_test}", exc_info=True)
         await cog.config.custom_openai_endpoint.set(prev_url)
@@ -65,21 +64,11 @@ async def aiuser_endpoint(inter: discord.Interaction, url: Optional[str]):
         )
         return
 
-    success_message = f"✅ Endpoint set to `{url or 'Official OpenAI'}` and tested successfully."
-
-    if url and "ollama" in url and available_models:
-        await cog.config.default_model.set(available_models[0])
-        for guild_id in await cog.config.all_guilds():
-            await cog.config.guild_from_id(guild_id).model.set(available_models[0])
-        success_message += f"\nDefault model switched to `{available_models[0]}` for Ollama endpoint."
-    elif url and "openrouter" in url:
-        await cog.config.default_model.set("openai/gpt-4o")
-        for guild_id in await cog.config.all_guilds():
-            await cog.config.guild_from_id(guild_id).model.set("openai/gpt-4o")
-        success_message += "\nDefault model switched to `openai/gpt-4o` for OpenRouter."
+    success_message = f"✅ Endpoint set to `{url or 'Official OpenAI'}` and tested successfully.\n"
+    success_message += "You may need to set your model for this endpoint using `/aiuser model` (in server or DM)."
 
     if url != prev_url:
-        success_message += "\nNote: Guild model defaults may need to be updated based on this new endpoint."
+        success_message += "\nNote: Guild/user model defaults are not automatically changed based on this new endpoint."
 
     embed = discord.Embed(title="Endpoint Updated", description=success_message, color=discord.Color.green())
     await inter.followup.send(embed=embed, ephemeral=True)
