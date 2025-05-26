@@ -1,18 +1,13 @@
-import discord
-from redbot.core import app_commands
-from discord.app_commands import Group, locale_str
+import discord  # type: ignore
+from redbot.core import app_commands  # type: ignore
+from discord.app_commands import Group, locale_str  # type: ignore
 from aiuser.config.defaults import DEFAULT_PROMPT, DEFAULT_DM_PROMPT
+from typing import Optional
 
 
 aiuser_prompt_group = Group(
-    name="aiuser_prompt", description=locale_str("Show or set the AI prompt."), guild_only=False
+    name="aiuser_prompt", description=locale_str("Manage or set the AI prompt."), guild_only=False
 )
-
-
-def get_config_section(cog, inter):
-    if inter.guild:
-        return cog.config.guild(inter.guild)
-    return cog.config.user(inter.user)
 
 
 @aiuser_prompt_group.command(name="show", description=locale_str("Show the current prompt."))
@@ -21,7 +16,7 @@ async def prompt_show(inter: discord.Interaction):
     if not cog:
         await inter.response.send_message("AIUser cog not loaded!", ephemeral=True)
         return
-    config_section = get_config_section(cog, inter)
+    config_section = cog.config.guild(inter.guild) if inter.guild else cog.config.user(inter.user)
     if inter.guild:
         val = await config_section.custom_text_prompt() or await cog.config.custom_text_prompt() or DEFAULT_PROMPT
         await inter.response.send_message(f"**Server prompt:**\n{val}", ephemeral=True)
@@ -32,12 +27,12 @@ async def prompt_show(inter: discord.Interaction):
 
 @aiuser_prompt_group.command(name="set", description=locale_str("Set a new prompt."))
 @app_commands.describe(prompt=locale_str("The new prompt text. Leave blank to reset to default."))
-async def prompt_set(inter: discord.Interaction, prompt: str = None):
+async def prompt_set(inter: discord.Interaction, prompt: Optional[str]):
     cog = inter.client.get_cog("AIUser")
     if not cog:
         await inter.response.send_message("AIUser cog not loaded!", ephemeral=True)
         return
-    config_section = get_config_section(cog, inter)
+    config_section = cog.config.guild(inter.guild) if inter.guild else cog.config.user(inter.user)
     if inter.guild:
         if not prompt:
             await config_section.custom_text_prompt.set(None)
