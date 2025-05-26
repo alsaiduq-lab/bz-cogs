@@ -38,8 +38,7 @@ async def chat_slash_command(inter: discord.Interaction, text: str):
         return
 
     # bandaid fix
-    raw_response = re.sub(r"<think>[\s\S]*?</think>", "", raw_response, flags=re.DOTALL)
-
+    raw_response = re.sub(r"<think\s*>.*?(</think\s*>|$)", "", raw_response, flags=re.DOTALL | re.IGNORECASE)
     cleaned_response = await remove_patterns_from_response(inter, cog.config, raw_response)
     if not cleaned_response:
         if not inter.response.is_done():
