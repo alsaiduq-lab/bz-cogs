@@ -1,43 +1,33 @@
 import re
 import discord
-import asyncio
-from redbot.core import app_commands, Config
+from redbot.core import commands, app_commands, Config
 from ..config.defaults import DEFAULT_PROMPT, DEFAULT_DM_PROMPT, DEFAULT_REMOVE_PATTERNS
 
 
-async def patched_response_handler(inter: discord.Interaction, config: Config, response: str) -> str:
-    cleaned = response.strip(" \n")
-    try:
-        if inter.guild is None:
-            patterns = DEFAULT_REMOVE_PATTERNS
+async def patched_response_handler(ctx: commands.Context, config: Config, response: str) -> str:
+    if ctx.guild is not None:
+        patterns = await config.guild(ctx.guild).removelist_regexes()
+        botname = ctx.message.guild.me.nick or ctx.bot.user.display_name
+        authors = {msg.author.display_name async for msg in ctx.channel.history(limit=10) if msg.author != ctx.guild.me}
+    else:
+        patterns = DEFAULT_REMOVE_PATTERNS
+        botname = ctx.bot.user.display_name
+        authors = {ctx.message.author.display_name}
+
+    expanded_patterns = []
+    for pattern in patterns:
+        p = pattern
+        if "{botname}" in p:
+            p = p.replace(r"{botname}", botname)
+        if "{authorname}" in p:
+            for author in authors:
+                expanded_patterns.append(p.replace(r"{authorname}", author))
         else:
-            patterns = await config.guild(inter.guild).removelist_regexes()
-            botname = inter.guild.me.nick or inter.client.user.display_name
-            patterns = [p.replace(r"{botname}", botname) for p in patterns]
-            authors = {
-                msg.author.display_name async for msg in inter.channel.history(limit=10) if msg.author != inter.guild.me
-            }
-            expanded_patterns = []
-            for pattern in patterns:
-                if "{authorname}" in pattern:
-                    for author in authors:
-                        expanded_patterns.append(pattern.replace(r"{authorname}", author))
-                else:
-                    expanded_patterns.append(pattern)
-            patterns = expanded_patterns
+            expanded_patterns.append(p)
 
-        for pattern in patterns:
-            try:
-                pattern_compiled = re.compile(pattern, flags=re.DOTALL | re.IGNORECASE)
-                cleaned = pattern_compiled.sub("", cleaned).strip(" \n")
-            except asyncio.TimeoutError:
-                pass
-            except Exception:
-                pass
-
-        cleaned = re.sub(r"(?i)<\s*think\s*>[\s\S]*?(?=$)", "", cleaned, flags=re.DOTALL).strip()
-    except Exception:
-        pass
+    cleaned = response.strip(" \n")
+    for pattern in expanded_patterns:
+        cleaned = re.sub(pattern, "", cleaned, flags=re.DOTALL | re.IGNORECASE).strip(" \n")
     return cleaned
 
 
