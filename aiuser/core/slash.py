@@ -7,6 +7,7 @@ from .slash_functions import aiuser_functions_group
 from .slash_image import aiuser_image_group
 from .slash_utils import get_owner_ids, owner_check
 from .slash_endpoint import aiuser_endpoint
+from aiuser.response.chat.response import remove_patterns_from_response
 
 
 @app_commands.command(
@@ -31,12 +32,23 @@ async def chat_slash_command(inter: discord.Interaction, text: str):
     if not (1 <= len(text) <= max_length):
         await inter.response.send_message(f"Text must be between 1 and {max_length} characters.", ephemeral=True)
         return
-    await handle_slash_command(cog, inter, text)
+
+    raw_response = await handle_slash_command(cog, inter, text)
+    if not raw_response:
+        await inter.response.send_message("No response generated.", ephemeral=True)
+        return
+
+    cleaned_response = await remove_patterns_from_response(inter, cog.config, raw_response)
+    if not cleaned_response:
+        await inter.response.send_message("Response was empty after cleaning.", ephemeral=True)
+        return
+
+    await inter.response.send_message(cleaned_response, ephemeral=False)
 
 
 @app_commands.command(
     name="lobotomize",
-    description="Reset the prompt to default. (Server or DM)",
+    description="Reset the prompt to default.",
 )
 @owner_check()
 async def lobotomize_command(inter: discord.Interaction):
