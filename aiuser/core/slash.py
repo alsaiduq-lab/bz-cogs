@@ -35,7 +35,7 @@ async def chat_slash_command(inter: discord.Interaction, text: str):
         return
 
     cleaned_response = await patched_response_handler(inter, cog.config, raw_response)
-    if not cleaned_response or not isinstance(cleaned_response, str):
+    if not cleaned_response or not isinstance(cleaned_response, str) or not cleaned_response.strip():
         if not inter.response.is_done():
             await inter.response.send_message("Response was empty after cleaning.", ephemeral=True)
         return
