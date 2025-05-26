@@ -3,7 +3,8 @@ from redbot.core import app_commands
 from ..config.defaults import DEFAULT_PROMPT, DEFAULT_DM_PROMPT, DEFAULT_REMOVE_PATTERNS
 
 
-async def patched_response_handler(response: str) -> str:
+async def patched_response_handler(ctx, config, response: str) -> str:
+    _ = ctx, config
     cleaned = response.strip(" \n")
     cleaned = re.sub(DEFAULT_REMOVE_PATTERNS[0], "", cleaned, flags=re.DOTALL | re.IGNORECASE).strip(" \n")
     return cleaned
