@@ -18,32 +18,38 @@ from aiuser.response.chat.response import remove_patterns_from_response
 @app_commands.checks.cooldown(1, 30)
 @app_commands.checks.cooldown(1, 5, key=None)
 async def chat_slash_command(inter: discord.Interaction, text: str):
+    if inter.response.is_done():
+        return
+
     cog = inter.client.get_cog("AIUser")
     if not cog:
         await inter.response.send_message("Cog not loaded!", ephemeral=True)
         return
 
     member = inter.user
-    is_nitro = False
-    if hasattr(member, "premium_since") or hasattr(member, "premium_type"):
-        is_nitro = bool(getattr(member, "premium_since", None) or getattr(member, "premium_type", 0))
+    is_nitro = bool(getattr(member, "premium_since", None) or getattr(member, "premium_type", 0))
     max_length = 4000 if is_nitro else 2000
 
     if not (1 <= len(text) <= max_length):
         await inter.response.send_message(f"Text must be between 1 and {max_length} characters.", ephemeral=True)
         return
 
-    raw_response = await handle_slash_command(cog, inter, text)
-    if not raw_response:
-        await inter.response.send_message("No response generated.", ephemeral=True)
-        return
+    try:
+        raw_response = await handle_slash_command(cog, inter, text)
+        if not raw_response:
+            await inter.response.send_message("No response generated.", ephemeral=True)
+            return
 
-    cleaned_response = await remove_patterns_from_response(inter, cog.config, raw_response)
-    if not cleaned_response:
-        await inter.response.send_message("Response was empty after cleaning.", ephemeral=True)
-        return
+        cleaned_response = await remove_patterns_from_response(inter, cog.config, raw_response)
+        if not cleaned_response:
+            await inter.response.send_message("Response was empty after cleaning.", ephemeral=True)
+            return
 
-    await inter.response.send_message(cleaned_response, ephemeral=False)
+        await inter.response.send_message(cleaned_response, ephemeral=False)
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        if not inter.response.is_done():
+            await inter.response.send_message("An error occurred while processing the command.", ephemeral=True)
 
 
 @app_commands.command(
