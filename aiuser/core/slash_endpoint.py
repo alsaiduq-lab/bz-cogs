@@ -14,7 +14,7 @@ logger = logging.getLogger("red.bz_cogs.aiuser")
     description="Set or update the OpenAI API endpoint.",
 )
 @app_commands.describe(
-    url="Custom OpenAI API compatible endpoint URL, or 'openai', 'openrouter', 'ollama'.",
+    url="Custom OpenAI API compatible endpoint URL, or 'openai', 'openrouter', 'ollama', 'grok'.",
     api_key="(Optional) API key for this endpoint.",
 )
 @owner_check()
@@ -46,10 +46,13 @@ async def aiuser_endpoint(inter: discord.Interaction, url: Optional[str], api_ke
         url = "https://api.openai.com/v1/"
         endpoint_type = "openai"
     else:
-        if "openrouter" in (url or ""):
+        url_lower = (url or "").lower()
+        if "openrouter" in url_lower:
             endpoint_type = "openrouter"
-        elif "ollama" in (url or ""):
+        elif "ollama" in url_lower:
             endpoint_type = "ollama"
+        elif "grok" in url_lower:
+            endpoint_type = "grok"
         else:
             endpoint_type = "openai"
 
@@ -81,6 +84,8 @@ async def aiuser_endpoint(inter: discord.Interaction, url: Optional[str], api_ke
                 r = await client.get(url + "models")
                 if r.status_code != 200:
                     raise RuntimeError(f"Ollama error: {r.text}")
+        elif endpoint_type == "grok":
+            pass
         else:
             try:
                 await cog.openai_client.models.list()
