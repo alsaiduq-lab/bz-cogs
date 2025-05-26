@@ -14,7 +14,6 @@ from aiuser.response.chat.response import remove_patterns_from_response
 @app_commands.command(name="chat", description="Talk directly to this bot's AI. Ask it anything you want!")
 @app_commands.describe(text="The prompt you want to send to the AI.")
 @app_commands.checks.cooldown(1, 30)
-@app_commands.checks.cooldown(1, 5, key=None)
 async def chat_slash_command(inter: discord.Interaction, text: str):
     cog = inter.client.get_cog("AIUser")
     if not cog:
@@ -32,17 +31,24 @@ async def chat_slash_command(inter: discord.Interaction, text: str):
         return
 
     raw_response = await handle_slash_command(cog, inter, text)
-    if not raw_response:
+    if not raw_response or not isinstance(raw_response, str):
         if not inter.response.is_done():
             await inter.response.send_message("No response generated.", ephemeral=True)
         return
 
-    # bandaid fix
-    raw_response = re.sub(r"<think\s*>.*?(</think\s*>|$)", "", raw_response, flags=re.DOTALL | re.IGNORECASE)
     cleaned_response = await remove_patterns_from_response(inter, cog.config, raw_response)
-    if not cleaned_response:
+    if not cleaned_response or not isinstance(cleaned_response, str):
         if not inter.response.is_done():
             await inter.response.send_message("Response was empty after cleaning.", ephemeral=True)
+        return
+
+    cleaned_response = re.sub(
+        r"(?i)<think\b[^>]*>.*?(</think\b[^>]*>|$)", "", cleaned_response, flags=re.DOTALL
+    ).strip()
+
+    if not cleaned_response:
+        if not inter.response.is_done():
+            await inter.response.send_message("Response was empty after final cleanup.", ephemeral=True)
         return
 
     if not inter.response.is_done():
