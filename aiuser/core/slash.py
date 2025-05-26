@@ -152,11 +152,10 @@ async def app_install(bot, cog):
         )
         lobotomize_command.allowed_installs = installs.AppInstallationType(guild=True, user=True)
 
-        for cmd in [
-            aiuser_accepted_slash_command,
-        ]:
-            cmd.allowed_contexts = installs.AppCommandContext(guild=True, dm_channel=True, private_channel=True)
-            cmd.allowed_installs = installs.AppInstallationType(guild=True, user=True)
+        aiuser_accepted_slash_command.allowed_contexts = installs.AppCommandContext(
+            guild=True, dm_channel=True, private_channel=True
+        )
+        aiuser_accepted_slash_command.allowed_installs = installs.AppInstallationType(guild=True, user=True)
 
         for group in [
             aiuser_prompt_group,
@@ -165,8 +164,10 @@ async def app_install(bot, cog):
             aiuser_image_group,
             aiuser_endpoint,
         ]:
+            group.allowed_contexts = installs.AppCommandContext(guild=True, dm_channel=True, private_channel=True)
+            group.allowed_installs = installs.AppInstallationType(guild=True, user=True)
             for subcmd in group.commands:
                 subcmd.allowed_contexts = installs.AppCommandContext(guild=True, dm_channel=True, private_channel=True)
                 subcmd.allowed_installs = installs.AppInstallationType(guild=True, user=True)
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"Error setting command contexts/installs: {e}")
