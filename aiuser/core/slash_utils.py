@@ -1,5 +1,37 @@
+import re
+import discord
+import asyncio
+
 from redbot.core import app_commands
-from ..config.defaults import DEFAULT_PROMPT, DEFAULT_DM_PROMPT
+from ..config.defaults import DEFAULT_PROMPT, DEFAULT_DM_PROMPT, DEFAULT_REMOVE_PATTERNS
+
+
+async def patched_response_handler(inter: discord.Interaction, config, response: str) -> str:
+    cleaned = response.strip(" \n")
+    if inter.guild is None:
+        patterns = DEFAULT_REMOVE_PATTERNS
+    else:
+        patterns = await config.guild(inter.guild).ovelist_regexes()
+        botname = inter.guild.me.nick or inter.client.user.display_name
+        patterns = [p.replace(r"{botname}", botname) for p in patterns]
+        authors = {
+            msg.author.display_name async for msg in inter.channel.history(limit=10) if msg.author != inter.guild.me
+        }
+        expanded_patterns = []
+        for pattern in patterns:
+            if "{authorname}" in pattern:
+                for author in authors:
+                    expanded_patterns.append(pattern.replace(r"{authorname}", author))
+            else:
+                expanded_patterns.append(pattern)
+        patterns = expanded_patterns
+
+    for pattern in patterns:
+        pattern_compiled = re.compile(pattern, flags=re.DOTALL | re.IGNORECASE)
+        cleaned = pattern_compiled.sub("", cleaned).strip(" \n")
+
+    cleaned = re.sub(r"(?i)<\s*think\s*>[\s\S]*?(?=$)", "", cleaned, flags=re.DOTALL).strip()
+    return cleaned
 
 
 def owner_check():
