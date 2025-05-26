@@ -6,7 +6,8 @@ from ..config.defaults import DEFAULT_PROMPT, DEFAULT_DM_PROMPT, DEFAULT_REMOVE_
 async def patched_response_handler(ctx, config, response: str) -> str:
     _ = ctx, config
     cleaned = response.strip(" \n")
-    cleaned = re.sub(DEFAULT_REMOVE_PATTERNS[0], "", cleaned, flags=re.DOTALL | re.IGNORECASE).strip(" \n")
+    for pattern in DEFAULT_REMOVE_PATTERNS:
+        cleaned = re.sub(pattern, "", cleaned, flags=re.DOTALL | re.IGNORECASE).strip(" \n")
     return cleaned
 
 
