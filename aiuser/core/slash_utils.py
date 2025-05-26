@@ -1,33 +1,11 @@
 import re
-import discord
-from redbot.core import commands, app_commands, Config
+from redbot.core import app_commands
 from ..config.defaults import DEFAULT_PROMPT, DEFAULT_DM_PROMPT, DEFAULT_REMOVE_PATTERNS
 
 
-async def patched_response_handler(ctx: commands.Context, config: Config, response: str) -> str:
-    if ctx.guild is not None:
-        patterns = await config.guild(ctx.guild).removelist_regexes()
-        botname = ctx.message.guild.me.nick or ctx.bot.user.display_name
-        authors = {msg.author.display_name async for msg in ctx.channel.history(limit=10) if msg.author != ctx.guild.me}
-    else:
-        patterns = DEFAULT_REMOVE_PATTERNS
-        botname = ctx.bot.user.display_name
-        authors = {ctx.message.author.display_name}
-
-    expanded_patterns = []
-    for pattern in patterns:
-        p = pattern
-        if "{botname}" in p:
-            p = p.replace(r"{botname}", botname)
-        if "{authorname}" in p:
-            for author in authors:
-                expanded_patterns.append(p.replace(r"{authorname}", author))
-        else:
-            expanded_patterns.append(p)
-
+async def patched_response_handler(response: str) -> str:
     cleaned = response.strip(" \n")
-    for pattern in expanded_patterns:
-        cleaned = re.sub(pattern, "", cleaned, flags=re.DOTALL | re.IGNORECASE).strip(" \n")
+    cleaned = re.sub(DEFAULT_REMOVE_PATTERNS[0], "", cleaned, flags=re.DOTALL | re.IGNORECASE).strip(" \n")
     return cleaned
 
 
