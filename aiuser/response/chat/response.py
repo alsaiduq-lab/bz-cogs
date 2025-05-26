@@ -8,6 +8,7 @@ from discord import AllowedMentions
 from redbot.core import Config, commands
 
 from aiuser.config.constants import REGEX_RUN_TIMEOUT
+from aiuser.config.defaults import DEFAULT_REMOVE_PATTERNS
 from aiuser.messages_list.messages import MessagesList
 from aiuser.response.chat.llm_pipeline import LLMPipeline
 from aiuser.types.abc import MixinMeta
@@ -23,12 +24,23 @@ def compile_and_apply(pattern_str: str, text: str) -> str:
 
 
 async def remove_patterns_from_response(ctx: commands.Context, config: Config, response: str) -> str:
+    cleaned = response.strip(" \n")
+    for pattern in DEFAULT_REMOVE_PATTERNS:
+        try:
+            cleaned = await compile_and_apply(pattern, cleaned)
+        except asyncio.TimeoutError:
+            logger.warning(f"Timeout applying default regex pattern: {pattern}")
+        except Exception:
+            logger.warning(f"Error applying default regex pattern: {pattern}", exc_info=True)
     if ctx.guild is not None:
         patterns = await config.guild(ctx.guild).removelist_regexes()
         botname = ctx.message.guild.me.nick or ctx.bot.user.display_name
         patterns = [p.replace(r"{botname}", botname) for p in patterns]
 
-        authors = {msg.author.display_name async for msg in ctx.channel.history(limit=10) if msg.author != ctx.guild.me}
+        authors = set()
+        async for msg in ctx.channel.history(limit=10):
+            if msg.author != ctx.guild.me:
+                authors.add(msg.author.display_name)
         expanded_patterns = []
         for pattern in patterns:
             if "{authorname}" in pattern:
@@ -36,17 +48,14 @@ async def remove_patterns_from_response(ctx: commands.Context, config: Config, r
                     expanded_patterns.append(pattern.replace(r"{authorname}", author))
             else:
                 expanded_patterns.append(pattern)
-    else:
-        expanded_patterns = []
+        for pattern in expanded_patterns:
+            try:
+                cleaned = await compile_and_apply(pattern, cleaned)
+            except asyncio.TimeoutError:
+                logger.warning(f"Timeout applying regex pattern: {pattern}")
+            except Exception:
+                logger.warning(f"Error applying regex pattern: {pattern}", exc_info=True)
 
-    cleaned = response.strip(" \n")
-    for pattern in expanded_patterns:
-        try:
-            cleaned = await compile_and_apply(pattern, cleaned)
-        except asyncio.TimeoutError:
-            logger.warning(f"Timeout applying regex pattern: {pattern}")
-        except Exception:
-            logger.warning(f"Error applying regex pattern: {pattern}", exc_info=True)
     return cleaned
 
 
