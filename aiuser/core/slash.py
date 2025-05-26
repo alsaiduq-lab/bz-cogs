@@ -1,4 +1,5 @@
 import discord
+import re
 from redbot.core import app_commands
 from aiuser.core.handlers import handle_slash_command
 from .slash_prompt import aiuser_prompt_group
@@ -35,6 +36,9 @@ async def chat_slash_command(inter: discord.Interaction, text: str):
         if not inter.response.is_done():
             await inter.response.send_message("No response generated.", ephemeral=True)
         return
+
+    # bandaid fix
+    raw_response = re.sub(r"<think>.*?</think>", "", raw_response, flags=re.DOTALL)
 
     cleaned_response = await remove_patterns_from_response(inter, cog.config, raw_response)
     if not cleaned_response:
