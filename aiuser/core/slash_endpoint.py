@@ -13,9 +13,12 @@ logger = logging.getLogger("red.bz_cogs.aiuser")
     name="aiuser_endpoint",
     description="Set or update the OpenAI API endpoint.",
 )
-@app_commands.describe(url="Custom OpenAI API compatible endpoint URL, or 'openai', 'openrouter', 'ollama'.")
+@app_commands.describe(
+    url="Custom OpenAI API compatible endpoint URL, or 'openai', 'openrouter', 'ollama'.",
+    api_key="(Optional) API key for this endpoint.",
+)
 @owner_check()
-async def aiuser_endpoint(inter: discord.Interaction, url: Optional[str]):
+async def aiuser_endpoint(inter: discord.Interaction, url: Optional[str], api_key: Optional[str] = None):
     cog = inter.client.get_cog("AIUser")
     if not cog:
         await inter.response.send_message("AIUser Cog not loaded!", ephemeral=True)
@@ -51,7 +54,11 @@ async def aiuser_endpoint(inter: discord.Interaction, url: Optional[str]):
             endpoint_type = "openai"
 
     prev_url = await cog.config.custom_openai_endpoint()
+    prev_api_key = await cog.config.custom_openai_api_key()
+
     await cog.config.custom_openai_endpoint.set(url)
+    if api_key is not None:
+        await cog.config.custom_openai_api_key.set(api_key)
 
     try:
         cog.openai_client = await setup_openai_client(cog.bot, cog.config)
@@ -60,6 +67,8 @@ async def aiuser_endpoint(inter: discord.Interaction, url: Optional[str]):
     except Exception as e_setup:
         logger.error(f"Failed to setup client for endpoint '{url}': {e_setup}", exc_info=True)
         await cog.config.custom_openai_endpoint.set(prev_url)
+        if api_key is not None:
+            await cog.config.custom_openai_api_key.set(prev_api_key)
         await inter.followup.send(
             f":warning: Failed to initialize client for `{orig_input_url or 'default'}`. Endpoint reverted. Error: {e_setup}",
             ephemeral=True,
@@ -81,6 +90,8 @@ async def aiuser_endpoint(inter: discord.Interaction, url: Optional[str]):
     except Exception as e_test:
         logger.error(f"Failed to test endpoint '{url}': {e_test}", exc_info=True)
         await cog.config.custom_openai_endpoint.set(prev_url)
+        if api_key is not None:
+            await cog.config.custom_openai_api_key.set(prev_api_key)
         await inter.followup.send(
             f":warning: New endpoint `{orig_input_url or 'default'}` failed test. Endpoint reverted. Error: {e_test}",
             ephemeral=True,
@@ -88,8 +99,12 @@ async def aiuser_endpoint(inter: discord.Interaction, url: Optional[str]):
         return
 
     success_message = f"✅ Endpoint set to `{url or 'Official OpenAI'}` and tested successfully.\n"
-    success_message += "You may need to set your model for this endpoint using `/aiuser model` (in server or DM)."
+    if api_key is not None:
+        success_message += "API key updated for this endpoint.\n"
+    else:
+        success_message += "API key was not changed.\n"
 
+    success_message += "You may need to set your model for this endpoint using `/aiuser model` (in server or DM)."
     if url != prev_url:
         success_message += "\nNote: Guild/user model defaults are not automatically changed based on this new endpoint."
 
