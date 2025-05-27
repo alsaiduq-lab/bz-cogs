@@ -1,3 +1,4 @@
+import os
 import discord
 from redbot.core import app_commands
 from ..openai_utils import setup_openai_client
@@ -7,6 +8,19 @@ import logging
 import httpx
 
 logger = logging.getLogger("red.bz_cogs.aiuser")
+
+ENDPOINTS = {
+    "openai": "https://api.openai.com/v1/",
+    "openrouter": "https://openrouter.ai/api/v1/",
+    "ollama": "http://localhost:11434/v1/",
+    "grok": "https://api.grok.x.ai/v1/",
+}
+API_ENV_VARS = {
+    "openai": "OPENAI_API_KEY",
+    "openrouter": "OPENROUTER_API_KEY",
+    "ollama": "OLLAMA_API_KEY",
+    "grok": "XAI_API_KEY",
+}
 
 
 @app_commands.command(
@@ -33,68 +47,75 @@ async def aiuser_endpoint(inter: discord.Interaction, url: Optional[str], api_ke
     if not inter.response.is_done():
         await inter.response.defer(ephemeral=True, thinking=True)
 
-    orig_input_url = url
-    endpoint_type = "openai"
+    input_url = url or ""
+    url = (url or "openai").strip().lower()
 
-    if url == "openrouter":
-        url = "https://openrouter.ai/api/v1/"
-        endpoint_type = "openrouter"
-    elif url == "ollama":
-        url = "http://localhost:11434/v1/"
-        endpoint_type = "ollama"
-    elif url in ("openai", None, "", "clear", "reset"):
-        url = "https://api.openai.com/v1/"
+    if url in ("", "openai"):
         endpoint_type = "openai"
+        api_url = ENDPOINTS["openai"]
+    elif url == "openrouter":
+        endpoint_type = "openrouter"
+        api_url = ENDPOINTS["openrouter"]
+    elif url == "ollama":
+        endpoint_type = "ollama"
+        api_url = ENDPOINTS["ollama"]
+    elif url == "grok":
+        endpoint_type = "grok"
+        api_url = ENDPOINTS["grok"]
     else:
-        url_lower = (url or "").lower()
+        url_lower = url.lower()
         if "openrouter" in url_lower:
             endpoint_type = "openrouter"
         elif "ollama" in url_lower:
             endpoint_type = "ollama"
-        elif "grok" in url_lower:
+        elif "grok" in url_lower or "x.ai" in url_lower:
             endpoint_type = "grok"
         else:
-            endpoint_type = "openai-like"
+            endpoint_type = "custom"
+        api_url = input_url
 
-    if api_key is None:
-        # TODO: add env checks to see if the respected API key type is in the env or as a redbot api
+    env_var = API_ENV_VARS.get(endpoint_type)
+    effective_api_key = api_key or (os.getenv(env_var) if env_var else None)
+
+    error_msg = None
+    try:
         if endpoint_type == "openai":
-            try:
-                cog.openai_client = await setup_openai_client(cog.bot, cog.config)
-                if not cog.openai_client:
-                    raise ConnectionError("Client setup returned None.")
-            except Exception as e_setup:
-                logger.error(f"Failed to setup client for endpoint '{url}': {e_setup}", exc_info=True)
-
-                await inter.followup.send(
-                    f":warning: Failed to initialize client for `{orig_input_url or 'default'}`. Endpoint reverted. Error: {e_setup}",
-                    ephemeral=True,
-                )
-                return
-
-        elif endpoint_type == "ollama":
-            async with httpx.AsyncClient() as client:
-                r = await client.get(url + "models")
+            cog.endpoint_url = api_url
+            cog.openai_client = await setup_openai_client(cog.bot, cog.config)
+            if not cog.openai_client:
+                error_msg = "Client setup returned None."
+        elif endpoint_type == "ollama" or endpoint_type == "openrouter":
+            cog.endpoint_url = api_url
+            headers = {}
+            if effective_api_key:
+                headers["Authorization"] = f"Bearer {effective_api_key}"
+            async with httpx.AsyncClient(timeout=8) as client:
+                r = await client.get(api_url + "models", headers=headers)
                 if r.status_code != 200:
-                    raise RuntimeError(f"Ollama error: {r.text}")
-        elif endpoint_type == "openrouter":
-            async with httpx.AsyncClient() as client:
-                r = await client.get(url + "models")
-                if r.status_code != 200:
-                    raise RuntimeError(f"OpenRouter error: {r.text}")
+                    error_msg = f"{endpoint_type.title()} error: {r.text}"
         elif endpoint_type == "grok":
-            # check for XAI_API_KEY, for now pass
-            pass
-        else:  # endpoint_type openai-like
-            pass
+            cog.endpoint_url = api_url
+            headers = {"Authorization": f"Bearer {effective_api_key}"} if effective_api_key else {}
+            async with httpx.AsyncClient(timeout=8) as client:
+                r = await client.get(api_url + "models", headers=headers)
+        elif endpoint_type == "custom":
+            cog.endpoint_url = api_url
+    except Exception as e:
+        logger.error(f"Failed to setup endpoint '{api_url}': {e}", exc_info=True)
+        error_msg = f":warning: Failed to initialize client for `{input_url or api_url}`. Error: {e}"
 
-    success_message = f"✅ Endpoint set to `{url or 'Official OpenAI'}` successfully.\n"
-    if api_key is not None:
-        success_message += "API key updated for this endpoint.\n"
+    if error_msg:
+        await inter.followup.send(error_msg, ephemeral=True)
+        return
+
+    msg = f"✅ Endpoint set to `{api_url}` ({endpoint_type}) successfully.\n"
+    if api_key:
+        msg += "API key updated for this endpoint.\n"
+    elif effective_api_key:
+        msg += "API key pulled from environment.\n"
     else:
-        success_message += "API key was not changed.\n"
+        msg += "No API key was set or found in environment.\n"
 
-    success_message += "You may need to set your model for this endpoint using `/aiuser model`."
-
-    embed = discord.Embed(title="Endpoint Updated", description=success_message, color=discord.Color.green())
+    msg += "You may need to set your model for this endpoint using `/aiuser model`."
+    embed = discord.Embed(title="Endpoint Updated", description=msg, color=discord.Color.green())
     await inter.followup.send(embed=embed, ephemeral=True)
