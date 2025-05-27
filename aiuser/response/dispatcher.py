@@ -3,7 +3,7 @@ import logging
 import discord
 from redbot.core import commands
 from typing import Optional, Any
-from aiuser.messages_list.messages import create_messages_list
+from aiuser.messages_list.messages import create_messages_list, MessagesList
 from aiuser.response.chat.response import create_chat_response
 from aiuser.response.image.generator_factory import get_image_generator
 from aiuser.response.image.response import create_image_response
@@ -20,7 +20,8 @@ async def dispatch_response(cog: MixinMeta, ctx: commands.Context, messages_list
             is_dm = isinstance(ctx.channel, discord.DMChannel)
             if messages_list is None:
                 if is_dm:
-                    messages_list = []
+                    messages_list = MessagesList(cog, ctx)
+                    await messages_list._init()
                 else:
                     messages_list = await create_messages_list(cog, ctx)
 
