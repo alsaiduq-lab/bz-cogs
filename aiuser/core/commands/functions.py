@@ -2,13 +2,13 @@
 import discord
 from redbot.core import app_commands
 from discord.app_commands import Group
-from .slash_utils import get_config_section
+from .slash_utils import get_config_section, owner_check
 
 
-@app_commands.command(
-    name="aiuser_functions",
-    description="Manage function calling.",
-)
+aiuser_functions_group = Group(name="aiuser_functions", description="Manage function calling.")
+aiuser_functions_group.checks.append(owner_check())
+
+
 async def aiuser_functions(inter: discord.Interaction):
     await inter.response.send_message(
         "See the subcommands:\n"

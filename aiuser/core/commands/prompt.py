@@ -3,12 +3,13 @@ from redbot.core import app_commands
 from discord.app_commands import Group, locale_str
 from aiuser.config.defaults import DEFAULT_PROMPT, DEFAULT_DM_PROMPT
 from typing import Optional
+from .slash_utils import owner_check
 
 
 aiuser_prompt_group = Group(
     name="aiuser_prompt", description=locale_str("Manage or set the AI prompt."), guild_only=False
 )
-
+aiuser_prompt_group.checks.append(owner_check())
 
 @aiuser_prompt_group.command(name="show", description=locale_str("Show the current prompt."))
 async def prompt_show(inter: discord.Interaction):

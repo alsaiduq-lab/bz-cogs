@@ -1,3 +1,5 @@
+import asyncio
+
 from redbot.core import app_commands
 from ...config.defaults import DEFAULT_PROMPT, DEFAULT_DM_PROMPT
 
@@ -5,16 +7,17 @@ from ...config.defaults import DEFAULT_PROMPT, DEFAULT_DM_PROMPT
 def owner_check():
     async def predicate(inter):
         cog = inter.client.get_cog("AIUser")
-        if inter.guild:
-            return inter.user.guild_permissions.administrator
+        if cog is None:
+            return False
         appinfo = await inter.client.application_info()
         owners = appinfo.owner
-        owner_ids = {owners.id} if hasattr(owners, "id") else {m.id for m in owners.members}
+        if hasattr(owners, "id"):
+            owner_ids = {owners.id}
+        else:
+            owner_ids = {m.id for m in owners.members}
         accepted_ids = set(await cog.config.accepted_ids() or [])
         return (inter.user.id in owner_ids) or (inter.user.id in accepted_ids)
-
     return app_commands.check(predicate)
-
 
 async def get_owner_ids(inter):
     appinfo = await inter.client.application_info()

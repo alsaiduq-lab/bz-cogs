@@ -3,13 +3,14 @@ from redbot.core import app_commands
 from discord.app_commands import Group
 from typing import Optional
 from aiuser.settings.utilities import get_available_models
-from .slash_utils import get_config_section
+from .slash_utils import get_config_section, owner_check
 
 
 @app_commands.command(
     name="aiuser_model",
     description="Manage or list AI models. Use subcommands: set, get, list.",
 )
+@owner_check()
 async def aiuser_model(inter: discord.Interaction):
     await inter.response.send_message(
         "**Subcommands:**\n"
