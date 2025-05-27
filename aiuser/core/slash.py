@@ -121,6 +121,7 @@ async def app_install(bot, cog):
 
     try:
         from discord.app_commands import installs
+        from discord.app_commands import Group
 
         chat_slash_command.allowed_contexts = installs.AppCommandContext(
             guild=True, dm_channel=True, private_channel=True
@@ -141,8 +142,13 @@ async def app_install(bot, cog):
         ]:
             group.allowed_contexts = installs.AppCommandContext(guild=True, dm_channel=True, private_channel=True)
             group.allowed_installs = installs.AppInstallationType(guild=True, user=True)
-            for subcmd in group.commands:
-                subcmd.allowed_contexts = installs.AppCommandContext(guild=True, dm_channel=True, private_channel=True)
-                subcmd.allowed_installs = installs.AppInstallationType(guild=True, user=True)
+
+            if isinstance(group, Group):
+                for subcmd in group.commands:
+                    subcmd.allowed_contexts = installs.AppCommandContext(
+                        guild=True, dm_channel=True, private_channel=True
+                    )
+                    subcmd.allowed_installs = installs.AppInstallationType(guild=True, user=True)
+
     except Exception as e:
         print(f"Error setting command contexts/installs: {e}")
