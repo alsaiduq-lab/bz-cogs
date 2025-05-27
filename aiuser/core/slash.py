@@ -1,12 +1,12 @@
 import discord
 from redbot.core import app_commands
 from aiuser.core.handlers import handle_slash_command
-from .commands.slash_prompt import aiuser_prompt_group
-from .commands.slash_model import aiuser_model_group
-from .commands.slash_functions import aiuser_functions_group
-from .commands.slash_image import aiuser_image_group
+from .commands.prompt import aiuser_prompt_group
+from .commands.model import aiuser_model_group
+from .commands.functions import aiuser_functions_group
+from .commands.image import aiuser_image_group
 from .commands.slash_utils import get_owner_ids, owner_check
-from .commands.slash_endpoint import aiuser_endpoint
+from .commands.endpoint import aiuser_endpoint
 from ..response.chat.response import remove_patterns_from_response
 
 
