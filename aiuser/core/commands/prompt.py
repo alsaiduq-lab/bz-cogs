@@ -1,6 +1,6 @@
-import discord  # type: ignore
-from redbot.core import app_commands  # type: ignore
-from discord.app_commands import Group, locale_str  # type: ignore
+import discord
+from redbot.core import app_commands
+from discord.app_commands import Group, locale_str
 from aiuser.config.defaults import DEFAULT_PROMPT, DEFAULT_DM_PROMPT
 from typing import Optional
 

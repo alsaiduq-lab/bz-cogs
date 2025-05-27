@@ -1,6 +1,6 @@
 import discord
 from redbot.core import app_commands
-from aiuser.core.openai_utils import setup_openai_client
+from ..openai_utils import setup_openai_client
 from .slash_utils import owner_check
 from typing import Optional
 import logging
@@ -54,64 +54,47 @@ async def aiuser_endpoint(inter: discord.Interaction, url: Optional[str], api_ke
         elif "grok" in url_lower:
             endpoint_type = "grok"
         else:
-            endpoint_type = "openai"
+            endpoint_type = "openai-like"
 
-    prev_url = await cog.config.custom_openai_endpoint()
-    prev_api_key = await cog.config.custom_openai_api_key()
+    if api_key is None:
+        # TODO: add env checks to see if the respected API key type is in the env or as a redbot api
+        if endpoint_type == "openai":
+            try:
+                cog.openai_client = await setup_openai_client(cog.bot, cog.config)
+                if not cog.openai_client:
+                    raise ConnectionError("Client setup returned None.")
+            except Exception as e_setup:
+                logger.error(f"Failed to setup client for endpoint '{url}': {e_setup}", exc_info=True)
 
-    await cog.config.custom_openai_endpoint.set(url)
-    if api_key is not None:
-        await cog.config.custom_openai_api_key.set(api_key)
+                await inter.followup.send(
+                    f":warning: Failed to initialize client for `{orig_input_url or 'default'}`. Endpoint reverted. Error: {e_setup}",
+                    ephemeral=True,
+                )
+                return
 
-    try:
-        cog.openai_client = await setup_openai_client(cog.bot, cog.config)
-        if not cog.openai_client:
-            raise ConnectionError("Client setup returned None.")
-    except Exception as e_setup:
-        logger.error(f"Failed to setup client for endpoint '{url}': {e_setup}", exc_info=True)
-        await cog.config.custom_openai_endpoint.set(prev_url)
-        if api_key is not None:
-            await cog.config.custom_openai_api_key.set(prev_api_key)
-        await inter.followup.send(
-            f":warning: Failed to initialize client for `{orig_input_url or 'default'}`. Endpoint reverted. Error: {e_setup}",
-            ephemeral=True,
-        )
-        return
-
-    try:
-        if endpoint_type == "ollama":
+        elif endpoint_type == "ollama":
             async with httpx.AsyncClient() as client:
                 r = await client.get(url + "models")
                 if r.status_code != 200:
                     raise RuntimeError(f"Ollama error: {r.text}")
+        elif endpoint_type == "openrouter":
+            async with httpx.AsyncClient() as client:
+                r = await client.get(url + "models")
+                if r.status_code != 200:
+                    raise RuntimeError(f"OpenRouter error: {r.text}")
         elif endpoint_type == "grok":
+            # check for XAI_API_KEY, for now pass
             pass
-        else:
-            try:
-                await cog.openai_client.models.list()
-            except Exception as e:
-                raise RuntimeError(f"Failed to list models: {e}")
+        else:  # endpoint_type openai-like
+            pass
 
-    except Exception as e_test:
-        logger.error(f"Failed to test endpoint '{url}': {e_test}", exc_info=True)
-        await cog.config.custom_openai_endpoint.set(prev_url)
-        if api_key is not None:
-            await cog.config.custom_openai_api_key.set(prev_api_key)
-        await inter.followup.send(
-            f":warning: New endpoint `{orig_input_url or 'default'}` failed test. Endpoint reverted. Error: {e_test}",
-            ephemeral=True,
-        )
-        return
-
-    success_message = f"✅ Endpoint set to `{url or 'Official OpenAI'}` and tested successfully.\n"
+    success_message = f"✅ Endpoint set to `{url or 'Official OpenAI'}` successfully.\n"
     if api_key is not None:
         success_message += "API key updated for this endpoint.\n"
     else:
         success_message += "API key was not changed.\n"
 
-    success_message += "You may need to set your model for this endpoint using `/aiuser model` (in server or DM)."
-    if url != prev_url:
-        success_message += "\nNote: Guild/user model defaults are not automatically changed based on this new endpoint."
+    success_message += "You may need to set your model for this endpoint using `/aiuser model`."
 
     embed = discord.Embed(title="Endpoint Updated", description=success_message, color=discord.Color.green())
     await inter.followup.send(embed=embed, ephemeral=True)

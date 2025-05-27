@@ -4,18 +4,12 @@ from redbot.core import app_commands
 from aiuser.config.models import VISION_SUPPORTED_MODELS
 from aiuser.types.enums import ScanImageMode
 from discord.app_commands import Group
+from .slash_utils import get_config_section
 
 aiuser_image_group = Group(
     name="aiuser_image",
     description="Manage image scan and image-to-text AI settings.",
 )
-
-
-def get_config_section(cog, inter):
-    if inter.guild:
-        return cog.config.guild(inter.guild)
-    else:
-        return cog.config.user(inter.user)
 
 
 @aiuser_image_group.command(name="toggle", description="Toggle image scanning on/off.")

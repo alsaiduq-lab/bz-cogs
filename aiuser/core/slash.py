@@ -1,12 +1,12 @@
 import discord
 from redbot.core import app_commands
 from aiuser.core.handlers import handle_slash_command
-from .slash_prompt import aiuser_prompt_group
-from .slash_model import aiuser_model_group
-from .slash_functions import aiuser_functions_group
-from .slash_image import aiuser_image_group
-from .slash_utils import get_owner_ids, owner_check
-from .slash_endpoint import aiuser_endpoint
+from .commands.slash_prompt import aiuser_prompt_group
+from .commands.slash_model import aiuser_model_group
+from .commands.slash_functions import aiuser_functions_group
+from .commands.slash_image import aiuser_image_group
+from .commands.slash_utils import get_owner_ids, owner_check
+from .commands.slash_endpoint import aiuser_endpoint
 from ..response.chat.response import remove_patterns_from_response
 
 
@@ -43,25 +43,6 @@ async def chat_slash_command(inter: discord.Interaction, text: str):
 
     if not inter.response.is_done():
         await inter.response.send_message(cleaned_response, ephemeral=False)
-
-
-@app_commands.command(
-    name="lobotomize",
-    description="Reset the prompt to default.",
-)
-@owner_check()
-async def lobotomize_command(inter: discord.Interaction):
-    cog = inter.client.get_cog("AIUser")
-    if not cog:
-        await inter.response.send_message("Cog not loaded!", ephemeral=True)
-        return
-
-    if inter.guild:
-        await cog.config.guild(inter.guild).custom_text_prompt.set(None)
-        await inter.response.send_message("Server prompt has been reset to default.", ephemeral=True)
-    else:
-        await cog.config.dm_prompt.set(None)
-        await inter.response.send_message("DM prompt has been reset to default.", ephemeral=True)
 
 
 @app_commands.command(
@@ -131,7 +112,6 @@ async def aiuser_accepted_slash_command(
 async def app_install(bot, cog):
     tree = cog.bot if hasattr(cog, "bot") else bot
     tree.tree.add_command(chat_slash_command)
-    tree.tree.add_command(lobotomize_command)
     tree.tree.add_command(aiuser_prompt_group)
     tree.tree.add_command(aiuser_model_group)
     tree.tree.add_command(aiuser_accepted_slash_command)
@@ -146,11 +126,6 @@ async def app_install(bot, cog):
             guild=True, dm_channel=True, private_channel=True
         )
         chat_slash_command.allowed_installs = installs.AppInstallationType(guild=True, user=True)
-
-        lobotomize_command.allowed_contexts = installs.AppCommandContext(
-            guild=True, dm_channel=True, private_channel=True
-        )
-        lobotomize_command.allowed_installs = installs.AppInstallationType(guild=True, user=True)
 
         aiuser_accepted_slash_command.allowed_contexts = installs.AppCommandContext(
             guild=True, dm_channel=True, private_channel=True

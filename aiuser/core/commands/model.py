@@ -1,8 +1,9 @@
-import discord  # type: ignore
-from redbot.core import app_commands  # type: ignore
-from discord.app_commands import Group  # type: ignore
+import discord
+from redbot.core import app_commands
+from discord.app_commands import Group
 from typing import Optional
 from aiuser.settings.utilities import get_available_models
+from .slash_utils import get_config_section
 
 
 @app_commands.command(
@@ -23,40 +24,44 @@ aiuser_model_group = Group(name="aiuser_model", description="Manage or list AI m
 
 
 @aiuser_model_group.command(name="set", description="Set the AI model for this server or your DMs.")
-@app_commands.describe(model="The model to set. Use 'unset' to clear.")
+@app_commands.describe(model="The model to set. Leave blank to clear.")
 async def set_model(inter: discord.Interaction, model: Optional[str]):
     cog = inter.client.get_cog("AIUser")
     if not cog:
         await inter.response.send_message("Cog not loaded!", ephemeral=True)
         return
 
-    if model is None:
-        await inter.response.send_message("Model cannot be empty. Use 'unset' to clear the model.", ephemeral=True)
-        return
-
-    model_to_set = None if model.lower() == "unset" else model
+    config_section = get_config_section(cog, inter)
 
     if inter.guild:
-        await cog.config.guild(inter.guild).model.set(model_to_set)
-        await inter.response.send_message(f"Set **server** model to: `{model_to_set or 'unset'}`", ephemeral=True)
+        await config_section.model.set(model)
+        context_name = "server"
     else:
-        await cog.config.user(inter.user).dm_model.set(model_to_set)
-        await inter.response.send_message(f"Set **your DM** model to: `{model_to_set or 'unset'}`", ephemeral=True)
+        await config_section.dm_model.set(model)
+        context_name = "DM"
+
+    await inter.response.send_message(
+        f"Set **{context_name}** model to: `{model}`" or "Cleared the model!", ephemeral=True
+    )
 
 
-@aiuser_model_group.command(name="get", description="Get the current AI model for this server or your DMs.")
-async def get_model(inter: discord.Interaction):
+@aiuser_model_group.command(name="show", description="Show the current AI model for this server or DMs.")
+async def show_model(inter: discord.Interaction):
     cog = inter.client.get_cog("AIUser")
     if not cog:
         await inter.response.send_message("Cog not loaded!", ephemeral=True)
         return
 
+    config_section = get_config_section(cog, inter)
+
     if inter.guild:
-        model = await cog.config.guild(inter.guild).model()
-        await inter.response.send_message(f"Current **server** model: `{model or 'unset'}`", ephemeral=True)
+        model = await config_section.model()
+        context_name = "server"
     else:
-        model = await cog.config.user(inter.user).dm_model()
-        await inter.response.send_message(f"Your current **DM** model: `{model or 'unset'}`", ephemeral=True)
+        model = await config_section.dm_model()
+        context_name = "DM"
+
+    await inter.response.send_message(f"Current **{context_name}** model: `{model}`", ephemeral=True)
 
 
 @aiuser_model_group.command(name="list", description="List available models from the current endpoint.")
@@ -65,10 +70,12 @@ async def list_models(inter: discord.Interaction):
     if not cog or not hasattr(cog, "openai_client"):
         await inter.response.send_message("Cog or OpenAI client not loaded!", ephemeral=True)
         return
+
     models = await get_available_models(cog.openai_client)
     if not models:
         await inter.response.send_message("No models available.", ephemeral=True)
         return
+
     desc = "\n".join(f"{m}" for m in models)
     embed = discord.Embed(
         title="Available models",

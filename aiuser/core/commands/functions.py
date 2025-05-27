@@ -1,6 +1,8 @@
+# TODO: turn this into MCP?
 import discord
 from redbot.core import app_commands
 from discord.app_commands import Group
+from .slash_utils import get_config_section
 
 
 @app_commands.command(
@@ -22,13 +24,6 @@ async def aiuser_functions(inter: discord.Interaction):
 
 
 aiuser_functions_group = Group(name="aiuser_functions", description="Manage function calling.")
-
-
-def get_config_section(cog, inter):
-    if inter.guild:
-        return cog.config.guild(inter.guild)
-    else:
-        return cog.config.user(inter.user)
 
 
 @aiuser_functions_group.command(name="toggle", description="Toggle function calling.")

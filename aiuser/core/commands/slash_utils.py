@@ -1,5 +1,5 @@
 from redbot.core import app_commands
-from ..config.defaults import DEFAULT_PROMPT, DEFAULT_DM_PROMPT
+from ...config.defaults import DEFAULT_PROMPT, DEFAULT_DM_PROMPT
 
 
 def owner_check():
@@ -33,3 +33,11 @@ async def get_prompt(cog, ctx):
         )
     else:
         return await cog.config.dm_prompt() or await cog.config.custom_text_prompt() or DEFAULT_DM_PROMPT
+
+
+# user app check
+def get_config_section(cog, inter):
+    if inter.guild:
+        return cog.config.guild(inter.guild)
+    else:
+        return cog.config.user(inter.user)
