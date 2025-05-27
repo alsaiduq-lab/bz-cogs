@@ -1,6 +1,8 @@
 # response/response_handler.py
 import logging
+import discord
 from redbot.core import commands
+from typing import Optional, Any
 from aiuser.messages_list.messages import create_messages_list
 from aiuser.response.chat.response import create_chat_response
 from aiuser.response.image.generator_factory import get_image_generator
@@ -11,21 +13,30 @@ from aiuser.types.abc import MixinMeta
 logger = logging.getLogger("red.bz_cogs.aiuser")
 
 
-async def dispatch_response(cog: MixinMeta, ctx: commands.Context, messages_list=None):
+async def dispatch_response(cog: MixinMeta, ctx: commands.Context, messages_list: Optional[Any] = None):
     """Decide which response to send based on the context"""
-    async with ctx.message.channel.typing():
-        if (not messages_list and not ctx.interaction) and await is_image_request(cog, ctx.message):
-            if await process_image_response(cog, ctx):
-                return
+    async with ctx.typing():
+        try:
+            is_dm = isinstance(ctx.channel, discord.DMChannel)
+            if messages_list is None:
+                if is_dm:
+                    messages_list = []
+                else:
+                    messages_list = await create_messages_list(cog, ctx)
 
-        # user app check
-        if messages_list is None:
-            if ctx.guild is None:
-                messages_list = []
-            else:
-                messages_list = await create_messages_list(cog, ctx)
+            if not messages_list and not is_dm and hasattr(ctx, "message") and await is_image_request(cog, ctx.message):
+                if await process_image_response(cog, ctx):
+                    return
 
-        return await create_chat_response(cog, ctx, messages_list)
+            return await create_chat_response(cog, ctx, messages_list)
+
+        except Exception as e:
+            logger.exception("Error in dispatch_response")
+            try:
+                await ctx.send(f":warning: Error in generating response!\n{e}")
+            except Exception:
+                pass
+            return None
 
 
 async def process_image_response(cog: MixinMeta, ctx: commands.Context) -> bool:
