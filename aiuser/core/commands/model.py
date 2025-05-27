@@ -24,6 +24,7 @@ async def aiuser_model(inter: discord.Interaction):
 aiuser_model_group = Group(name="aiuser_model", description="Manage or list AI models.")
 
 
+@owner_check()
 @aiuser_model_group.command(name="set", description="Set the AI model for this server or your DMs.")
 @app_commands.describe(model="The model to set. Leave blank to clear.")
 async def set_model(inter: discord.Interaction, model: Optional[str]):
@@ -46,6 +47,7 @@ async def set_model(inter: discord.Interaction, model: Optional[str]):
     )
 
 
+@owner_check()
 @aiuser_model_group.command(name="show", description="Show the current AI model for this server or DMs.")
 async def show_model(inter: discord.Interaction):
     cog = inter.client.get_cog("AIUser")
@@ -63,6 +65,9 @@ async def show_model(inter: discord.Interaction):
         context_name = "DM"
 
     await inter.response.send_message(f"Current **{context_name}** model: `{model}`", ephemeral=True)
+
+
+owner_check()
 
 
 @aiuser_model_group.command(name="list", description="List available models from the current endpoint.")

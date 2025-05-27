@@ -10,9 +10,9 @@ aiuser_image_group = Group(
     name="aiuser_image",
     description="Manage image scan and image-to-text AI settings.",
 )
-aiuser_image_group.checks.append(owner_check())
 
 
+@owner_check()
 @aiuser_image_group.command(name="toggle", description="Toggle image scanning on/off.")
 async def image_toggle(inter: discord.Interaction):
     cog = inter.client.get_cog("AIUser")
@@ -30,6 +30,7 @@ async def image_toggle(inter: discord.Interaction):
     await inter.response.send_message(embed=embed, ephemeral=True)
 
 
+@owner_check()
 @aiuser_image_group.command(name="maxsize", description="Set max image size in MB.")
 @app_commands.describe(size="Max download size in Megabytes")
 async def image_maxsize(inter: discord.Interaction, size: float):
@@ -47,6 +48,7 @@ async def image_maxsize(inter: discord.Interaction, size: float):
     await inter.response.send_message(embed=embed, ephemeral=True)
 
 
+@owner_check()
 @aiuser_image_group.command(name="mode", description="Set method for scanning images.")
 @app_commands.describe(mode="Image scan mode: local, ai-horde, llm")
 async def image_mode(inter: discord.Interaction, mode: str):
@@ -112,6 +114,7 @@ async def image_mode(inter: discord.Interaction, mode: str):
         await inter.response.send_message(embed=embed, ephemeral=True)
 
 
+@owner_check()
 @aiuser_image_group.command(name="model", description="Set the specific LLM model for image scan.")
 @app_commands.describe(model_name="Name of a compatible model")
 async def image_model(inter: discord.Interaction, model_name: str):

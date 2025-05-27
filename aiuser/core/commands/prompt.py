@@ -9,8 +9,9 @@ from .slash_utils import owner_check
 aiuser_prompt_group = Group(
     name="aiuser_prompt", description=locale_str("Manage or set the AI prompt."), guild_only=False
 )
-aiuser_prompt_group.checks.append(owner_check())
 
+
+@owner_check
 @aiuser_prompt_group.command(name="show", description=locale_str("Show the current prompt."))
 async def prompt_show(inter: discord.Interaction):
     cog = inter.client.get_cog("AIUser")
@@ -26,6 +27,7 @@ async def prompt_show(inter: discord.Interaction):
         await inter.response.send_message(f"**DM prompt:**\n{val}", ephemeral=True)
 
 
+@owner_check
 @aiuser_prompt_group.command(name="set", description=locale_str("Set a new prompt."))
 @app_commands.describe(prompt=locale_str("The new prompt text. Leave blank to reset to default."))
 async def prompt_set(inter: discord.Interaction, prompt: Optional[str]):

@@ -5,10 +5,11 @@ from discord.app_commands import Group
 from .slash_utils import get_config_section, owner_check
 
 
-aiuser_functions_group = Group(name="aiuser_functions", description="Manage function calling.")
-aiuser_functions_group.checks.append(owner_check())
-
-
+@app_commands.command(
+    name="aiuser_functions",
+    description="Manage function calling.",
+)
+@owner_check()
 async def aiuser_functions(inter: discord.Interaction):
     await inter.response.send_message(
         "See the subcommands:\n"
@@ -26,6 +27,7 @@ async def aiuser_functions(inter: discord.Interaction):
 aiuser_functions_group = Group(name="aiuser_functions", description="Manage function calling.")
 
 
+@owner_check()
 @aiuser_functions_group.command(name="toggle", description="Toggle function calling.")
 async def functions_toggle(inter: discord.Interaction):
     cog = inter.client.get_cog("AIUser")
@@ -46,6 +48,7 @@ async def functions_toggle(inter: discord.Interaction):
     await inter.response.send_message(embed=embed, ephemeral=True)
 
 
+@owner_check()
 @aiuser_functions_group.command(name="location", description="Set the location for function calling.")
 @app_commands.describe(latitude="Latitude", longitude="Longitude")
 async def functions_location(inter: discord.Interaction, latitude: float, longitude: float):
@@ -77,6 +80,7 @@ async def toggle_function_helper(config_section, tool_names):
     return tool_names[0] in enabled_tools, changed
 
 
+@owner_check()
 @aiuser_functions_group.command(name="search", description="Toggle Search function.")
 async def functions_search(inter: discord.Interaction):
     cog = inter.client.get_cog("AIUser")
@@ -97,6 +101,7 @@ async def functions_search(inter: discord.Interaction):
     await inter.response.send_message(f"Search function enabled: {enabled}", ephemeral=True)
 
 
+@owner_check()
 @aiuser_functions_group.command(name="scrape", description="Toggle Scrape function (open URLs).")
 async def functions_scrape(inter: discord.Interaction):
     cog = inter.client.get_cog("AIUser")
@@ -114,6 +119,7 @@ async def functions_scrape(inter: discord.Interaction):
     await inter.response.send_message(f"Scrape function enabled: {enabled}", ephemeral=True)
 
 
+@owner_check()
 @aiuser_functions_group.command(name="weather", description="Toggle Weather functions.")
 async def functions_weather(inter: discord.Interaction):
     cog = inter.client.get_cog("AIUser")
@@ -139,6 +145,7 @@ async def functions_weather(inter: discord.Interaction):
     await inter.response.send_message(f"Weather functions enabled: {enabled}", ephemeral=True)
 
 
+@owner_check()
 @aiuser_functions_group.command(name="noresponse", description="Toggle the 'No Response' function.")
 async def functions_noresponse(inter: discord.Interaction):
     cog = inter.client.get_cog("AIUser")
@@ -156,6 +163,7 @@ async def functions_noresponse(inter: discord.Interaction):
     await inter.response.send_message(f"No Response function enabled: {enabled}", ephemeral=True)
 
 
+@owner_check()
 @aiuser_functions_group.command(name="wolframalpha", description="Toggle Wolfram Alpha function.")
 async def functions_wolframalpha(inter: discord.Interaction):
     cog = inter.client.get_cog("AIUser")
